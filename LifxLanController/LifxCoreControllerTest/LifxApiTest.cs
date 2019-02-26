@@ -7,10 +7,10 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Lifx;
-using LifxLanController;
+using LifxCoreController;
 using Xunit;
 
-namespace LifxLanControllerTest
+namespace LifxCoreControllerTest
 {
     public class LifxApiTest
     {

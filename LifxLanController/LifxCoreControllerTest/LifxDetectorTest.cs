@@ -6,10 +6,10 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using LifxLanController;
+using LifxCoreController;
 using Xunit;
 
-namespace LifxLanControllerTest
+namespace LifxCoreControllerTest
 {
     public class LifxDetectorTest
     {
