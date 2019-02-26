@@ -1,0 +1,182 @@
+﻿using Lifx;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace LifxCoreController
+{
+    public class LifxApi : LifxDetector, ILifxApi, IDisposable
+    {
+        public IEnumerable<IPAddress> LightsAddresses => Lights.Keys;
+
+        private DateTime? LastRefreshTime;
+
+        private Timer Timer;
+
+        public LifxApi()
+        {
+            Task.Run(() => StartAutoRefresh(TimeSpan.FromSeconds(10)));
+        }
+
+        public async Task<(eLifxResponse, string)> RefreshBulbsAsync()
+        {
+            var cts = new CancellationTokenSource();
+            return await RefreshBulbsAsync(cts.Token);
+        }
+
+        public async Task<(eLifxResponse, string)> RefreshBulbsAsync(CancellationToken token)
+        {
+            try
+            {
+                await this.DetectLights(token);
+
+                LastRefreshTime = DateTime.Now;
+                string serializedLights = JsonConvert.SerializeObject(Lights.Values);
+                return (eLifxResponse.Success, serializedLights);
+            }
+            catch (Exception ex)
+            {
+                return (eLifxResponse.ActionFailed, ex.ToString());
+            }
+        }
+
+        public async Task<eLifxResponse> SetAutoRefreshAsync(TimeSpan cycle, CancellationToken token)
+        {
+            try
+            {
+                await this.DetectLights(token);
+            }
+            catch (Exception ex)
+            {
+                return eLifxResponse.ActionFailed;
+            }
+
+            StartAutoRefresh(cycle);
+            return eLifxResponse.Success;
+        }
+
+        public void DisableAutoRefresh(CancellationToken token)
+        {
+            StopAutoRefresh();
+        }
+
+        public async Task<(eLifxResponse response, string)> GetLightAsync(IPAddress ip)
+        {
+            if (IsLightListObsolete())
+            {
+                var (response, message) = await RefreshBulbsAsync();
+                if (!response.Equals(eLifxResponse.Success))
+                {
+                    return (response, message);
+                }
+            }
+
+            if (Lights.ContainsKey(ip))
+            {
+                string light = JsonConvert.SerializeObject(Lights[ip]);
+                return (eLifxResponse.Success, light);
+            }
+
+            return (eLifxResponse.BulbDoesntExist, "Could not locate light by IP");
+        }
+
+        public async Task<IEnumerable<LightBulb>> GetBulbsAsync(bool refresh, CancellationToken token)
+        {
+            if (IsLightListObsolete() || refresh)
+            {
+                var (response, message) = await RefreshBulbsAsync();
+                if (!response.Equals(eLifxResponse.Success))
+                {
+                    return null;
+                }
+            }
+
+            return Lights.Values;
+        }
+
+
+        private async void StartAutoRefresh(TimeSpan updateSleepSpan)
+        {
+            void ResetTimer(TimeSpan sleepSpan)
+            {
+                Timer.Change(sleepSpan, TimeSpan.FromMilliseconds(-1));
+            }
+            async void timeCallBackAsync(object state)
+            {
+                ResetTimer(TimeSpan.FromMilliseconds(-1));
+                await RefreshBulbsAsync();
+                ResetTimer(updateSleepSpan);
+            }
+            // Set Timer
+            // Add lock on all actions during timer action
+            await RefreshBulbsAsync();
+            Timer = new Timer(timeCallBackAsync);
+            ResetTimer(updateSleepSpan);
+        }
+
+        private void StopAutoRefresh()
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<(eLifxResponse, string)> ToggleLightAsync(string label)
+        {
+            try
+            {
+                if (IsLightListObsolete() ||
+                    !Lights.Values.Where(x => x.Label == label).Any())
+                {
+                    Thread.Sleep(100);
+                    var (response, message) = await RefreshBulbsAsync();
+                    Thread.Sleep(100);
+                    if (!response.Equals(eLifxResponse.Success))
+                    {
+                        return (response, message);
+                    }
+                }
+
+                LightBulb light = Lights.Values.SingleOrDefault(x => x.Label == label);
+
+                if (light == null)
+                {
+                    return (eLifxResponse.BulbDoesntExist, "Couldn't locate bulb by label");
+                }
+                if (light.Power == Power.Off)
+                {
+                    await light.OnAsync(); // Start developing a new Light, expose State, expose delay on light
+                }
+                else
+                {
+                    await light.OffAsync();
+                }
+
+                return (eLifxResponse.Success, light.Serialize());
+            }
+            catch (Exception ex)
+            {
+                // return log
+                return (eLifxResponse.ActionFailed, ex.ToString());
+            }
+        }
+
+        private bool IsLightListObsolete()
+        {
+            return !LastRefreshTime.HasValue ||
+                                DateTime.Now - LastRefreshTime > TimeSpan.FromMinutes(5);
+        }
+
+        public override void Dispose()
+        {
+            StopAutoRefresh();
+            Timer.Dispose();
+            Timer = null;
+            base.Dispose();
+        }
+    }
+}
