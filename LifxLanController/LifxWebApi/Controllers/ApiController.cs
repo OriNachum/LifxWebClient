@@ -83,7 +83,7 @@ namespace LifxWebApi.Controllers
 
         // GET api/values/5
         [HttpGet("Off")]
-        public async Task<ActionResult<Response>> GetOffAsync(string label, , int? overTime)
+        public async Task<ActionResult<Response>> GetOffAsync(string label, int? overTime)
         {
             LightBulb lightBulb = Lifx.Lights.FirstOrDefault(x => x.Value.Label == label).Value;
             await lightBulb.OffAsync();
