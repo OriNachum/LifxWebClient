@@ -65,24 +65,24 @@ namespace LifxCoreController
         {
             if (!_lights.ContainsKey(candidateIpAddress))
             {
+
+                ILight light = null;
                 try
                 {
+                    light = await lightFactory.CreateLightAsync(candidateIpAddress, cancellationToken);
+                }
+                catch (OperationCanceledException ex)
+                {
+                    // Add log
+                }
+                catch (SocketException ex)
+                {
+                    // It hints the IP doesn't exist, or not a bulb
+                }
 
-                    ILight light = null;
+                if (light != null)
+                {
                     try
-                    {
-                        light = await lightFactory.CreateLightAsync(candidateIpAddress, cancellationToken);
-                    }
-                    catch (OperationCanceledException ex)
-                    {
-                        // Add log
-                    }
-                    catch (SocketException ex)
-                    {
-                        // It hints the IP doesn't exist, or not a bulb
-                    }
-
-                    if (light != null)
                     {
                         LightState state = await light.GetStateAsync();
                         lock (lockObject)
@@ -91,23 +91,28 @@ namespace LifxCoreController
                             {
                                 var lightBulb = new LightBulb(light, state);
                                 _lights.Add(candidateIpAddress, lightBulb);
+                                // Log
+                            }
+                            else
+                            {
+                                // Log
                             }
                         }
-                        // Add log
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        // Add log
+                        string serializedLights = JsonConvert.SerializeObject(_lights.Values.Select(x => x.Serialize()));
+                        var sb = new StringBuilder().AppendLine();
+                        sb.Append($"|Failed to add Light. Already in dictionary: { _lights.ContainsKey(candidateIpAddress) }");
+                        sb.Append($"|CandidateIP: { candidateIpAddress } ");
+                        sb.Append($"|All Ips: {_lights.Keys.Select(x => string.Join(".", x.GetAddressBytes())) } ");
+                        sb.Append($"|All Lights: { serializedLights } { Environment.NewLine } ");
+                        throw new Exception(sb.ToString(), ex);
                     }
                 }
-                catch (OperationCanceledException ex)
+                else
                 {
-                    // Add log
-                }
-                catch (Exception ex)
-                {
-                    string serializedLights = JsonConvert.SerializeObject(_lights.Values);
-                    throw new Exception($"Failed to add Light. CandidateIP: { candidateIpAddress }, All Lights: { serializedLights }", ex);
+                    // Add log, already exists
                 }
             }
         }

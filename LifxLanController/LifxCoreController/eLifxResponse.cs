@@ -3,9 +3,9 @@
     public enum eLifxResponse
     {
         Success,
+        NoChange,
         BulbDoesntExist,
         NameAlreadyExists,
-        NameDoesntExist,
         ActionFailed,
     }
 }

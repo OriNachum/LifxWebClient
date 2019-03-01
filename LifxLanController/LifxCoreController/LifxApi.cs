@@ -15,22 +15,23 @@ namespace LifxCoreController
     {
         public IEnumerable<IPAddress> LightsAddresses => Lights.Keys;
 
+        private readonly TimeSpan REFRESH_CYCLE_SLEEP_TIME = TimeSpan.FromMinutes(1);
         private DateTime? LastRefreshTime;
 
         private Timer Timer;
 
         public LifxApi()
         {
-            Task.Run(() => StartAutoRefresh(TimeSpan.FromSeconds(10)));
+            Task.Run(() => StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME));
         }
 
-        public async Task<(eLifxResponse, string)> RefreshBulbsAsync()
+        public async Task<(eLifxResponse response, string data)> RefreshBulbsAsync()
         {
             var cts = new CancellationTokenSource();
             return await RefreshBulbsAsync(cts.Token);
         }
 
-        public async Task<(eLifxResponse, string)> RefreshBulbsAsync(CancellationToken token)
+        public async Task<(eLifxResponse response, string data)> RefreshBulbsAsync(CancellationToken token)
         {
             try
             {
@@ -61,12 +62,7 @@ namespace LifxCoreController
             return eLifxResponse.Success;
         }
 
-        public void DisableAutoRefresh(CancellationToken token)
-        {
-            StopAutoRefresh();
-        }
-
-        public async Task<(eLifxResponse response, string)> GetLightAsync(IPAddress ip)
+        public async Task<(eLifxResponse response, string data)> GetLightAsync(IPAddress ip)
         {
             if (IsLightListObsolete())
             {
@@ -86,20 +82,19 @@ namespace LifxCoreController
             return (eLifxResponse.BulbDoesntExist, "Could not locate light by IP");
         }
 
-        public async Task<IEnumerable<LightBulb>> GetBulbsAsync(bool refresh, CancellationToken token)
+        public async Task<(eLifxResponse response, string data)> GetBulbsAsync(bool refresh, CancellationToken token)
         {
             if (IsLightListObsolete() || refresh)
             {
                 var (response, message) = await RefreshBulbsAsync();
                 if (!response.Equals(eLifxResponse.Success))
                 {
-                    return null;
+                    return (response, "Could not fetch bulbs");
                 }
             }
-
-            return Lights.Values;
+            string bulbs = JsonConvert.SerializeObject(Lights.Values);
+            return (eLifxResponse.Success, bulbs);
         }
-
 
         private async void StartAutoRefresh(TimeSpan updateSleepSpan)
         {
@@ -107,7 +102,7 @@ namespace LifxCoreController
             {
                 Timer.Change(sleepSpan, TimeSpan.FromMilliseconds(-1));
             }
-            async void timeCallBackAsync(object state)
+            async void timerCallBackAsync(object state)
             {
                 ResetTimer(TimeSpan.FromMilliseconds(-1));
                 await RefreshBulbsAsync();
@@ -116,16 +111,11 @@ namespace LifxCoreController
             // Set Timer
             // Add lock on all actions during timer action
             await RefreshBulbsAsync();
-            Timer = new Timer(timeCallBackAsync);
+            Timer = new Timer(timerCallBackAsync);
             ResetTimer(updateSleepSpan);
         }
 
-        private void StopAutoRefresh()
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<(eLifxResponse, string)> ToggleLightAsync(string label)
+        public async Task<(eLifxResponse response, string data)> ToggleLightAsync(string label)
         {
             try
             {
@@ -165,6 +155,21 @@ namespace LifxCoreController
             }
         }
 
+        public async Task<(eLifxResponse response, string data)> OnAsync(string label, int? overTime)
+        {
+            LightBulb lightBulb = Lights.FirstOrDefault(x => x.Value.Label == label).Value;
+            if (overTime.HasValue)
+            {
+                return await lightBulb.OnOverTimeAsync(overTime.Value);
+            }
+            else
+            {
+                await lightBulb.OnAsync();
+                string serializedBulb = lightBulb.Serialize();
+                return (eLifxResponse.Success, serializedBulb);
+            }
+        }
+
         private bool IsLightListObsolete()
         {
             return !LastRefreshTime.HasValue ||
@@ -173,7 +178,6 @@ namespace LifxCoreController
 
         public override void Dispose()
         {
-            StopAutoRefresh();
             Timer.Dispose();
             Timer = null;
             base.Dispose();

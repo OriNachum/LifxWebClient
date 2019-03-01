@@ -15,17 +15,16 @@ namespace LifxCoreController
         /// </summary>
         /// <param name="refresh"></param>
         /// <returns></returns>
-        Task<IEnumerable<LightBulb>> GetBulbsAsync(bool refresh, CancellationToken token);
+        Task<(eLifxResponse response, string data)> GetBulbsAsync(bool refresh, CancellationToken token);
 
-        Task<(eLifxResponse, string)> RefreshBulbsAsync();
+        Task<(eLifxResponse response, string data)> RefreshBulbsAsync();
 
-        Task<(eLifxResponse, string)> RefreshBulbsAsync(CancellationToken token);
+        Task<(eLifxResponse response, string data)> RefreshBulbsAsync(CancellationToken token);
 
         Task<eLifxResponse> SetAutoRefreshAsync(TimeSpan cycle, CancellationToken token);
 
-        void DisableAutoRefresh(CancellationToken token);
-
-        Task<(eLifxResponse response, string)> GetLightAsync(IPAddress ip);
-        Task<(eLifxResponse, string)> ToggleLightAsync(string label);
+        Task<(eLifxResponse response, string data)> GetLightAsync(IPAddress ip);
+        Task<(eLifxResponse response, string data)> ToggleLightAsync(string label);
+        Task<(eLifxResponse response, string data)> OnAsync(string label, int? fadeDuration);
     }
 }

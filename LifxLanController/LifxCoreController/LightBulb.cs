@@ -69,6 +69,23 @@ namespace LifxCoreController
         }
 
 
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.Append($"Name: { Label }; ");
+            sb.Append($"IP: { string.Join('.', Address.GetAddressBytes()) }; ");
+            sb.Append($"Product: { Product }; ");
+            sb.Append($"Version: { Version }; ");
+            sb.Append($"Power: { Power }; ");
+            sb.Append($"Temperature: { Temperature }; ");
+            sb.Append($"Brightness: { Brightness }; ");
+            sb.Append($"ColorHue: { ColorHue }; ");
+            sb.Append($"ColorSaturation: { ColorSaturation }; ");
+            sb.Append($"LastVerifiedState: { StateVerificationTimeUtc.ToShortTimeString() }; ");
+            sb.Append($"");
+            return sb.ToString();
+        }
+
         #region Serialization
         public string Serialize()
         {
@@ -169,6 +186,52 @@ namespace LifxCoreController
                     this.Power = power;
                 }
             }
+        }
+
+        private async Task<bool> VerifyBulbState(Func<LightBulb, bool> condition)
+        {
+            if (condition(this))
+            {
+                await GetStateAsync();
+                return condition(this);
+            }
+
+            return false;
+        }
+        
+        /// <summary>
+        /// Brings the lightbulb to 100% over duration of time
+        /// </summary>
+        /// <param name="overTime">time in seconds for bulb to reach 100%</param>
+        /// <returns></returns>
+        public async Task<(eLifxResponse response, string data)> OnOverTimeAsync(int overTime)
+        {
+            Func<LightBulb, bool> condition = (x) => (x.Power == Power.On && x.Brightness == 1);
+            var sameCondition = await VerifyBulbState(condition);
+            if (sameCondition)
+            {
+                string serializedBulb = this.Serialize();
+                return ((int)eLifxResponse.Success, serializedBulb);
+            }
+            double initialBrightness = this.Brightness;
+            double nextBrightness = initialBrightness + SINGLE_PERCENT;
+            await this.SetBrightnessAsync(new Percentage(nextBrightness));
+            
+            // Export this part to runner, use 'overTime' to calculate progression
+            while (this.Brightness != 1) 
+            {
+                nextBrightness += SINGLE_PERCENT;
+                var nextBrightnessPercentage = new Percentage(nextBrightness);
+                Thread.Sleep(1000);
+                await this.SetBrightnessAsync(nextBrightnessPercentage);
+            }
+            // Add runner to keep going on "a pace"
+            // Add a runner to run in loops and send messages to the bulb.
+            // This will just load it with commands, and the runner will run them.
+            // Queue will be SortedDictionary by run time.
+
+            // await lightBulb.GetStateAsync();
+            return (eLifxResponse.Success, this.Serialize());
         }
 
         public async Task OffAsync()
@@ -398,7 +461,7 @@ namespace LifxCoreController
         IDictionary<DateTime, CommandRequest> RequestedCommands = new Dictionary<DateTime, CommandRequest>();
         const int MaximumAllowedCommandsInFrame = 5;
         TimeSpan CommandRequestMaxLifeTime = TimeSpan.FromSeconds(30);
-
+        private const double SINGLE_PERCENT = 0.01;
 
         private LifxCommandCallback RaiseCommandRequested(eLifxCommand lifxCommand, CancellationTokenSource cancellationTokenSource)
         {
