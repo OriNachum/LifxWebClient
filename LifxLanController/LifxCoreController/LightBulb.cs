@@ -34,6 +34,15 @@ namespace LifxCoreController
         [JsonIgnore]
         public IPAddress Address { get; private set; }
 
+        public string IPv4Address
+        {
+            get
+            {
+                return string.Join('.', AddressByte);
+            }
+        }
+
+        [JsonIgnore]
         public byte[] AddressByte
         {
             get
@@ -73,7 +82,7 @@ namespace LifxCoreController
         {
             var sb = new StringBuilder();
             sb.Append($"Name: { Label }; ");
-            sb.Append($"IP: { string.Join('.', Address.GetAddressBytes()) }; ");
+            sb.Append($"IP: { IPv4Address }");
             sb.Append($"Product: { Product }; ");
             sb.Append($"Version: { Version }; ");
             sb.Append($"Power: { Power }; ");

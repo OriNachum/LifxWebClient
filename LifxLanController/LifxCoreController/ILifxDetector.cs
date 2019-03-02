@@ -13,6 +13,6 @@ namespace LifxCoreController
     {
         IDictionary<IPAddress, LightBulb> Lights { get;  }
 
-        Task DetectLights(CancellationToken cancellationToken);
+        Task DetectLightsAsync(CancellationToken cancellationToken);
     }
 }

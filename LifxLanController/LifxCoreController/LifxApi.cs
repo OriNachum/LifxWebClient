@@ -35,7 +35,7 @@ namespace LifxCoreController
         {
             try
             {
-                await this.DetectLights(token);
+                await this.DetectLightsAsync(token);
 
                 LastRefreshTime = DateTime.Now;
                 string serializedLights = JsonConvert.SerializeObject(Lights.Values);
@@ -51,7 +51,7 @@ namespace LifxCoreController
         {
             try
             {
-                await this.DetectLights(token);
+                await this.DetectLightsAsync(token);
             }
             catch (Exception ex)
             {

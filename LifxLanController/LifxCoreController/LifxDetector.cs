@@ -31,8 +31,13 @@ namespace LifxCoreController
             _lights = new ConcurrentDictionary<IPAddress, LightBulb>();
         }
 
-        public async Task DetectLights(CancellationToken cancellationToken)
+        public async Task DetectLightsAsync(CancellationToken cancellationToken)
         {
+            // TODO: 
+            // Add lock. 
+            // Add last update. 
+            // If last update is small enough, just return. 
+            // Lights are now updated.
             var lightFactory = new LightFactory();
             // var candidateIpByteArray = new byte[] { 10, 0, 0, 2 };
             // var candidateIpByteArray = new byte[] { 192, 168, 1, 11 };
@@ -47,21 +52,22 @@ namespace LifxCoreController
                 _lights.Remove(ipAddress);
             }
 
-            await Task.WhenAll(allIpsInNetwork.Select(candidateIpAddress =>
+            await Task.WhenAll(allIpsInNetwork.Select(async candidateIpAddress => 
+            //foreach (IPAddress candidateIpAddress in allIpsInNetwork)
             {
                 if (_lights.ContainsKey(candidateIpAddress))
                 {
-                    return _lights[candidateIpAddress].GetStateAsync();
+                   await new Task(async () => await _lights[candidateIpAddress].GetStateAsync());
                 }
                 else
                 {
-                    return DetectLight(lightFactory, candidateIpAddress, cancellationToken);
+                    await DetectLightAsync(lightFactory, candidateIpAddress, cancellationToken);
                 }
-            }).ToArray());
+            }));
         }
 
         object lockObject = new object();
-        private async Task DetectLight(LightFactory lightFactory, IPAddress candidateIpAddress, CancellationToken cancellationToken)
+        private async Task DetectLightAsync(LightFactory lightFactory, IPAddress candidateIpAddress, CancellationToken cancellationToken)
         {
             if (!_lights.ContainsKey(candidateIpAddress))
             {
@@ -101,6 +107,14 @@ namespace LifxCoreController
                     }
                     catch (Exception ex)
                     {
+                        if (light != null)
+                        {
+                            if (_lights.ContainsKey(candidateIpAddress))
+                            {
+                                _lights.Remove(candidateIpAddress);
+                            }
+                            light.Dispose();
+                        }
                         string serializedLights = JsonConvert.SerializeObject(_lights.Values.Select(x => x.Serialize()));
                         var sb = new StringBuilder().AppendLine();
                         sb.Append($"|Failed to add Light. Already in dictionary: { _lights.ContainsKey(candidateIpAddress) }");
@@ -119,28 +133,47 @@ namespace LifxCoreController
 
         public async Task<IEnumerable<IPAddress>> GetAllIpsInNetworkAsync()
         {
-            int port = 80;
+            int port = 56700;
             var neighbourIps = new List<IPAddress>();
             byte[] ipBase = new byte[4] { 192, 168, 1, 1 };
 
-            using (var pinger = new TcpClient())
+            /*using (var pinger = new TcpClient())
             {
                 pinger.SendTimeout = 100;
-                await pinger.ConnectAsync(new IPAddress(ipBase), port);
+                var ip = new IPAddress(ipBase);
+                await pinger.ConnectAsync(ip, port);
                 if (!pinger.Connected)
                 {
                     // host is active
                     return neighbourIps;
                 }
-            }
-
-            var ipAddresses = new List<IPAddress>();
+            }*/
+            var lastSygments = new List<byte>();
             for (byte i = 2; i < 255; i++)
             {
-                ipBase[3] = i;
-                var ipAddress = new IPAddress(ipBase);
-                ipAddresses.Add(ipAddress);
+                lastSygments.Add(i);
             }
+            var ipAddresses = new List<IPAddress>();
+            await Task.WhenAll(lastSygments.Select(async lastSygment => {
+                ipBase[3] = lastSygment;
+                var ipAddress = new IPAddress(ipBase);
+                using (var pinger = new Ping())
+                {
+                    // pinger.SendTimeout = 100;
+                    try
+                    {
+                        PingReply reply = await pinger.SendPingAsync(ipAddress);
+                        if (reply.Status == IPStatus.Success)
+                        {
+                            ipAddresses.Add(ipAddress);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+                }
+            }));
             return ipAddresses;
         }
 
