@@ -1,5 +1,6 @@
 ﻿using Lifx;
 using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,6 +17,24 @@ namespace LifxCoreController
 {
     public class LifxDetector : ILifxDetector
     {
+        object lightsLock = new object();
+
+        ILogger _logger = null;
+
+        ILogger Logger
+        {
+            get
+            {
+                if (_logger == null)
+                {
+                    _logger = new LoggerConfiguration()
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log")
+                    .CreateLogger();
+                }
+                return _logger;
+            }
+        }
+
         private IDictionary<IPAddress, LightBulb> _lights { get; set; }
 
         public IDictionary<IPAddress, LightBulb> Lights
@@ -31,103 +50,190 @@ namespace LifxCoreController
             _lights = new ConcurrentDictionary<IPAddress, LightBulb>();
         }
 
+        object DetectionStartedLock = new object();
+        bool DetectionStarted = false;
+
         public async Task DetectLightsAsync(CancellationToken cancellationToken)
         {
-            // TODO: 
-            // Add lock. 
-            // Add last update. 
-            // If last update is small enough, just return. 
-            // Lights are now updated.
-            var lightFactory = new LightFactory();
-            // var candidateIpByteArray = new byte[] { 10, 0, 0, 2 };
-            // var candidateIpByteArray = new byte[] { 192, 168, 1, 11 };
-            // var candidateIpAddress = new IPAddress(candidateIpByteArray);
-            ICollection<Task> detectionTries = new List<Task>();
-            IEnumerable<IPAddress> allIpsInNetwork = await GetAllIpsInNetworkAsync();
-            IEnumerable<IPAddress> deadIps = _lights.Keys.Where(x => !allIpsInNetwork.Contains(x));
-
-            foreach (IPAddress ipAddress in deadIps)
+            bool anotherDetectectionStarted = CheckAndWaitIfAnotherDetectionStarted();
+            if (anotherDetectectionStarted)
             {
-                _lights[ipAddress].Light.Dispose();
-                _lights.Remove(ipAddress);
+                return;
             }
 
-            await Task.WhenAll(allIpsInNetwork.Select(async candidateIpAddress => 
-            //foreach (IPAddress candidateIpAddress in allIpsInNetwork)
+            try
             {
-                if (_lights.ContainsKey(candidateIpAddress))
+                Logger.Information("LifxDetector - Starting to detect lights");
+
+                var lightFactory = new LightFactory();
+                // var candidateIpByteArray = new byte[] { 10, 0, 0, 2 };
+                // var candidateIpByteArray = new byte[] { 192, 168, 1, 11 };
+                // var candidateIpAddress = new IPAddress(candidateIpByteArray);
+                ICollection<Task> detectionTries = new List<Task>();
+                IEnumerable<IPAddress> allIpsInNetwork = await GetAllIpsInNetworkAsync();
+                lock (lightsLock)
                 {
-                   await new Task(async () => await _lights[candidateIpAddress].GetStateAsync());
+                    IEnumerable<IPAddress> deadIps = _lights.Keys.Where(x => !allIpsInNetwork.Contains(x));
+                    foreach (IPAddress ipAddress in deadIps)
+                    {
+                        RemoveLightBulb(ipAddress);
+                    }
                 }
-                else
+                var scanTasks = new List<Task>();
+                await ScanExistingIps(lightFactory, allIpsInNetwork, scanTasks, cancellationToken);
+                await GetAllLightsStates(cancellationToken);
+            }
+            finally
+            {
+                lock (DetectionStartedLock)
                 {
-                    await DetectLightAsync(lightFactory, candidateIpAddress, cancellationToken);
+                    DetectionStarted = false;
                 }
-            }));
+            }
         }
 
-        object lockObject = new object();
+        private async Task GetAllLightsStates(CancellationToken cancellationToken)
+        {
+            var getStateTasks = new List<Task<LightState>>();
+            foreach (LightBulb light in Lights.Values)
+            {
+                getStateTasks.Add(light.GetStateAsync());
+            }
+            await Task.WhenAll(getStateTasks);
+        }
+
+        private bool CheckAndWaitIfAnotherDetectionStarted()
+        {
+            bool detectionAlreadyStarted = false;
+            lock (DetectionStartedLock)
+            {
+                detectionAlreadyStarted = DetectionStarted;
+                if (!DetectionStarted)
+                {
+                    DetectionStarted = true;
+                }
+            }
+            if (detectionAlreadyStarted)
+            {
+                while (detectionAlreadyStarted)
+                {
+                    Thread.Sleep(1000);
+                    lock (DetectionStartedLock)
+                    {
+                        detectionAlreadyStarted = DetectionStarted;
+                    }
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        private async Task ScanExistingIps(LightFactory lightFactory, IEnumerable<IPAddress> allIpsInNetwork, List<Task> scanTasks, CancellationToken cancellationToken)
+        {
+            foreach (IPAddress candidateIpAddress in allIpsInNetwork)
+            {
+                var knownIP = false;
+                ILight light = null;
+                lock (lightsLock)
+                {
+                    knownIP = _lights.ContainsKey(candidateIpAddress);
+                }
+                if (!knownIP)
+                {
+                    scanTasks.Add(DetectLightAsync(lightFactory, candidateIpAddress, cancellationToken));
+                }
+            }
+            await Task.WhenAll(scanTasks);
+        }
+
         private async Task DetectLightAsync(LightFactory lightFactory, IPAddress candidateIpAddress, CancellationToken cancellationToken)
         {
-            if (!_lights.ContainsKey(candidateIpAddress))
+            bool lightKnown = false;
+            lock (lightsLock)
             {
+                lightKnown = _lights.ContainsKey(candidateIpAddress);
+            }
+            if (lightKnown)
+            {
+                return;
+            }
 
-                ILight light = null;
+            ILight light = await CreateLightMuffleExceptionAsync(lightFactory, candidateIpAddress, cancellationToken);
+            if (light != null)
+            {
+                LightState? state = null;
                 try
                 {
-                    light = await lightFactory.CreateLightAsync(candidateIpAddress, cancellationToken);
+                    state = await light.GetStateAsync();
                 }
-                catch (OperationCanceledException ex)
+                catch (Exception ex)
                 {
-                    // Add log
-                }
-                catch (SocketException ex)
-                {
-                    // It hints the IP doesn't exist, or not a bulb
+                    light.Dispose();
+
+                    string serializedLights = JsonConvert.SerializeObject(_lights.Values.Select(x => x.Serialize()));
+                    var sb = new StringBuilder().AppendLine();
+                    sb.Append($"|Failed to add Light. Already in dictionary: { _lights.ContainsKey(candidateIpAddress) }");
+                    sb.Append($"|CandidateIP: { candidateIpAddress } ");
+                    sb.Append($"|All Ips: {_lights.Keys.Select(x => string.Join(".", x.GetAddressBytes())) } ");
+                    sb.Append($"|All Lights: { serializedLights } { Environment.NewLine } ");
+                    throw new Exception(sb.ToString(), ex);
                 }
 
-                if (light != null)
+                lock (lightsLock)
                 {
-                    try
+                    if (state.HasValue && !_lights.ContainsKey(candidateIpAddress))
                     {
-                        LightState state = await light.GetStateAsync();
-                        lock (lockObject)
-                        {
-                            if (!_lights.ContainsKey(candidateIpAddress))
-                            {
-                                var lightBulb = new LightBulb(light, state);
-                                _lights.Add(candidateIpAddress, lightBulb);
-                                // Log
-                            }
-                            else
-                            {
-                                // Log
-                            }
-                        }
+                        var lightBulb = new LightBulb(light, state.Value);
+                        _lights.Add(candidateIpAddress, lightBulb);
+                        // Log
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        if (light != null)
-                        {
-                            if (_lights.ContainsKey(candidateIpAddress))
-                            {
-                                _lights.Remove(candidateIpAddress);
-                            }
-                            light.Dispose();
-                        }
-                        string serializedLights = JsonConvert.SerializeObject(_lights.Values.Select(x => x.Serialize()));
-                        var sb = new StringBuilder().AppendLine();
-                        sb.Append($"|Failed to add Light. Already in dictionary: { _lights.ContainsKey(candidateIpAddress) }");
-                        sb.Append($"|CandidateIP: { candidateIpAddress } ");
-                        sb.Append($"|All Ips: {_lights.Keys.Select(x => string.Join(".", x.GetAddressBytes())) } ");
-                        sb.Append($"|All Lights: { serializedLights } { Environment.NewLine } ");
-                        throw new Exception(sb.ToString(), ex);
+                        // Log
                     }
                 }
-                else
+            }
+            else
+            {
+                // Add log, already exists
+            }
+
+        }
+
+        private static async Task<ILight> CreateLightMuffleExceptionAsync(LightFactory lightFactory, IPAddress candidateIpAddress, CancellationToken cancellationToken)
+        {
+            ILight light = null;
+            using (var cts = new CancellationTokenSource())
+            {
+                try
                 {
-                    // Add log, already exists
+
+                    cancellationToken.Register(cts.Cancel);
+                    light = await lightFactory.CreateLightAsync(candidateIpAddress, cancellationToken);
+
                 }
+                catch (Exception ex)
+                {
+                    light?.Dispose();
+                    light = null;
+                    cts.Cancel();
+                }
+            }
+            return light;
+        }
+
+        private void RemoveLightBulb(IPAddress lightIp)
+        {
+            lock (lightsLock)
+            {
+                ILight savedLight = null;
+                if (_lights.ContainsKey(lightIp))
+                {
+                    savedLight = _lights[lightIp];
+                    _lights.Remove(lightIp);
+                }
+                savedLight?.Dispose();
             }
         }
 

@@ -8,6 +8,7 @@ using Lifx;
 using LifxCoreController;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Serilog;
 
 namespace LifxWebApi.Controllers
 {
@@ -33,10 +34,27 @@ namespace LifxWebApi.Controllers
             }
         }
 
+        ILogger _logger = null;
+
+        ILogger Logger
+        {
+            get
+            {
+                if (_logger == null)
+                {
+                    _logger = new LoggerConfiguration()
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log")
+                    .CreateLogger();
+                }
+                return _logger;
+            }
+        }
+
         // GET api/values11
         [HttpGet("Reset")]
         public ActionResult<eLifxResponse> Reset()
         {
+            Logger.Information("ApiController - Reset");
             lock (lifxLock)
             {
                 if (_lifx != null)
@@ -54,6 +72,8 @@ namespace LifxWebApi.Controllers
         [HttpGet("GetBulbs")]
         public async Task<ActionResult<Response>> GetBulbsAsync()
         {
+            Logger.Information("ApiController - GetBulbs");
+
             var (response, message) = await Lifx.RefreshBulbsAsync();
             if (response == eLifxResponse.Success)
             {
@@ -67,6 +87,8 @@ namespace LifxWebApi.Controllers
         [HttpGet("Toggle")]
         public async Task<ActionResult<string>> GetToggleLightAsyncParam(string label)
         {
+            Logger.Information("ApiController - Toggle");
+
             (eLifxResponse response, string message) = await Lifx.ToggleLightAsync(label);
 
             return response.ToString() + ": " + message;
@@ -76,6 +98,8 @@ namespace LifxWebApi.Controllers
         [HttpGet("Refresh")]
         public async Task<ActionResult<string>> GetRefreshBulbsAsync()
         {
+            Logger.Information("ApiController - Refresh");
+
             (eLifxResponse response, string message) = await Lifx.RefreshBulbsAsync();
 
             return response.ToString() + ": " + message;
@@ -85,6 +109,8 @@ namespace LifxWebApi.Controllers
         [HttpGet("Off")]
         public async Task<ActionResult<Response>> GetOffAsync(string label, int? overTime)
         {
+            Logger.Information("ApiController - Off");
+
             LightBulb lightBulb = Lifx.Lights.FirstOrDefault(x => x.Value.Label == label).Value;
             await lightBulb.OffAsync();
             await lightBulb.GetStateAsync();
@@ -95,6 +121,8 @@ namespace LifxWebApi.Controllers
         [HttpGet("On")]
         public async Task<ActionResult<Response>> GetOnAsync(string label, int? overTime)
         {
+            Logger.Information("ApiController - On");
+
             var (response, messages) = await Lifx.OnAsync(label, overTime);
             return new Response { responseType = (int)response, responseData = messages };
         }

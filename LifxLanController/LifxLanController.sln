@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.421
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LifxWebApi", "LifxWebApi\LifxWebApi.csproj", "{76AED8C3-806A-49C8-9749-4EF22C0BB13B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LifxWebApi", "LifxWebApi\LifxWebApi.csproj", "{76AED8C3-806A-49C8-9749-4EF22C0BB13B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LifxCoreController", "LifxCoreController\LifxCoreController.csproj", "{670D8829-3502-4F6E-802D-1177E4630439}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LifxCoreController", "LifxCoreController\LifxCoreController.csproj", "{670D8829-3502-4F6E-802D-1177E4630439}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LifxCoreControllerTest", "LifxCoreControllerTest\LifxCoreControllerTest.csproj", "{5D2944D6-8972-43BF-90C6-E28B3338F80F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LifxCoreControllerTest", "LifxCoreControllerTest\LifxCoreControllerTest.csproj", "{5D2944D6-8972-43BF-90C6-E28B3338F80F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

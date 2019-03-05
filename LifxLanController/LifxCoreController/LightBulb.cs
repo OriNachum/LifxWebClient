@@ -23,6 +23,7 @@ namespace LifxCoreController
         public int ColorHue { get; private set; }
         public double ColorSaturation { get; private set; }
 
+        [JsonIgnore]
         public LightState? LastVerifiedState
         {
             get;

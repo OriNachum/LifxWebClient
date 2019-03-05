@@ -1,5 +1,6 @@
 ﻿using Lifx;
 using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -20,6 +21,22 @@ namespace LifxCoreController
 
         private Timer Timer;
 
+        ILogger _logger = null;
+
+        ILogger Logger
+        {
+            get
+            {
+                if (_logger == null)
+                {
+                    _logger = new LoggerConfiguration()
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log")
+                    .CreateLogger();
+                }
+                return _logger;
+            }
+        }
+
         public LifxApi()
         {
             Task.Run(() => StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME));
@@ -35,6 +52,7 @@ namespace LifxCoreController
         {
             try
             {
+                Logger.Information("LifxApi - Refreshing bulbs");
                 await this.DetectLightsAsync(token);
 
                 LastRefreshTime = DateTime.Now;
