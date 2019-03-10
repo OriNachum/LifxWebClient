@@ -25,6 +25,7 @@ namespace LifxCoreController
 
         Task<(eLifxResponse response, string data)> GetLightAsync(IPAddress ip);
         Task<(eLifxResponse response, string data)> ToggleLightAsync(string label);
-        Task<(eLifxResponse response, string data)> OnAsync(string label, int? fadeDuration);
+        Task<(eLifxResponse response, string data, string bulb)> OnAsync(string label, int? fadeDuration);
+        Task<(eLifxResponse response, string data, string bulb)> OffAsync(string label, int? fadeDuration);
     }
 }

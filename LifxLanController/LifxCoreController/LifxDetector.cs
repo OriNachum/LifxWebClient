@@ -28,7 +28,7 @@ namespace LifxCoreController
                 if (_logger == null)
                 {
                     _logger = new LoggerConfiguration()
-                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log")
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log", shared: true)
                     .CreateLogger();
                 }
                 return _logger;
@@ -184,7 +184,11 @@ namespace LifxCoreController
                 {
                     if (state.HasValue && !_lights.ContainsKey(candidateIpAddress))
                     {
-                        var lightBulb = new LightBulb(light, state.Value);
+                        var bulbLogger = new LoggerConfiguration()
+                        .WriteTo.File($"C:\\Logs\\LifxWebApi\\{ state.Value.Label.Value }.log", shared: true)
+                        .CreateLogger();
+
+                        var lightBulb = new LightBulb(light, state.Value, bulbLogger);
                         _lights.Add(candidateIpAddress, lightBulb);
                         // Log
                     }

@@ -46,7 +46,7 @@ namespace LifxCoreControllerTest
             using (var server = new LifxDetector())
             {
                 // Act
-                await server.DetectLights(cts.Token);
+                await server.DetectLightsAsync(cts.Token);
                 foreach (ILight light in server.Lights.Values)
                 {
                     uint second = 1000;

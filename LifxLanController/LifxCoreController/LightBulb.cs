@@ -1,5 +1,6 @@
 ﻿using Lifx;
 using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace LifxCoreController
 {
-    public class LightBulb : ILight
+    public class LightBulb : ILightBulb
     {
         [JsonIgnore]
         public ILight Light { get; }
@@ -23,11 +24,29 @@ namespace LifxCoreController
         public int ColorHue { get; private set; }
         public double ColorSaturation { get; private set; }
 
+        private LightState? _lastVerifiedState;
+
         [JsonIgnore]
         public LightState? LastVerifiedState
         {
-            get;
-            private set;
+            get
+            {
+                return _lastVerifiedState;
+            }
+            private set
+            {
+                _lastVerifiedState = value.Value;
+                if (_lastVerifiedState.HasValue)
+                {
+                    LightState state = _lastVerifiedState.Value;
+                    this.Label = state.Label.Value;
+                    this.Power = state.Power;
+                    this.Temperature = state.Temperature.Value;
+                    this.Brightness = state.Brightness.Value;
+                    this.ColorHue = state.Color.Hue.Value;
+                    this.ColorSaturation = state.Color.Saturation.Value;
+                }
+            }
         }
 
         public DateTime StateVerificationTimeUtc { get; private set; }
@@ -60,7 +79,42 @@ namespace LifxCoreController
 
         public uint Version { get; private set; }
 
-        public LightBulb(ILight light, LightState state)
+        private TimeSpan IdlePeriod = TimeSpan.FromSeconds(15);
+        private TimeSpan WorkingPeriod = TimeSpan.FromMilliseconds(100);
+        private ITimer actionRunner;
+        private IProducerConsumerCollection<Func<Task>> actionQueue = new ConcurrentQueue<Func<Task>>();
+        object actionQueueLock = new object();
+        private async Task CheckActionQueueAsync()
+        {
+            Logger.Information($"LifxBulb - CheckActionQueue - { actionQueue.Count() } items in action queue");
+            if (actionQueue.Any() && actionQueue.TryTake(out Func<Task> unqueuedAction))
+            {
+                await unqueuedAction();
+            }
+            else
+            {
+                actionRunner.Reset(IdlePeriod);
+            }
+        }
+        #region Logger
+        private ILogger _logger = null;
+
+        private ILogger Logger
+        {
+            get
+            {
+                if (_logger == null && !string.IsNullOrEmpty(Label))
+                {
+                    _logger = new LoggerConfiguration()
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\{ Label }.log", shared: true)
+                    .CreateLogger();
+                }
+                return _logger;
+            }
+        }
+        #endregion
+
+        public LightBulb(ILight light, LightState state, ILogger logger = null)
         {
             this.Light = light;
 
@@ -68,16 +122,19 @@ namespace LifxCoreController
             this.Product = light.Product;
             this.Version = light.Version;
 
-            this.Label = state.Label.Value;
-            this.Power = state.Power;
-            this.Temperature = state.Temperature.Value;
-            this.Brightness = state.Brightness.Value;
-            this.ColorHue = state.Color.Hue.Value;
-            this.ColorSaturation = state.Color.Saturation.Value;
             this.LastVerifiedState = state;
             this.StateVerificationTimeUtc = DateTime.UtcNow;
-        }
 
+            if (logger != null)
+            {
+                _logger = logger;
+            }
+
+            Logger.Information($"LifxBulb - { Label } - Registered Light");
+
+            actionRunner = new GapBasedTimer(CheckActionQueueAsync, IdlePeriod, Logger);
+            actionRunner.InitializeCallback(CheckActionQueueAsync, IdlePeriod);
+        }
 
         public override string ToString()
         {
@@ -110,6 +167,8 @@ namespace LifxCoreController
         }
         #endregion
 
+
+        #region ILightBulb
         #region ILight
         public async Task<LightState> GetStateAsync()
         {
@@ -208,41 +267,6 @@ namespace LifxCoreController
 
             return false;
         }
-        
-        /// <summary>
-        /// Brings the lightbulb to 100% over duration of time
-        /// </summary>
-        /// <param name="overTime">time in seconds for bulb to reach 100%</param>
-        /// <returns></returns>
-        public async Task<(eLifxResponse response, string data)> OnOverTimeAsync(int overTime)
-        {
-            Func<LightBulb, bool> condition = (x) => (x.Power == Power.On && x.Brightness == 1);
-            var sameCondition = await VerifyBulbState(condition);
-            if (sameCondition)
-            {
-                string serializedBulb = this.Serialize();
-                return ((int)eLifxResponse.Success, serializedBulb);
-            }
-            double initialBrightness = this.Brightness;
-            double nextBrightness = initialBrightness + SINGLE_PERCENT;
-            await this.SetBrightnessAsync(new Percentage(nextBrightness));
-            
-            // Export this part to runner, use 'overTime' to calculate progression
-            while (this.Brightness != 1) 
-            {
-                nextBrightness += SINGLE_PERCENT;
-                var nextBrightnessPercentage = new Percentage(nextBrightness);
-                Thread.Sleep(1000);
-                await this.SetBrightnessAsync(nextBrightnessPercentage);
-            }
-            // Add runner to keep going on "a pace"
-            // Add a runner to run in loops and send messages to the bulb.
-            // This will just load it with commands, and the runner will run them.
-            // Queue will be SortedDictionary by run time.
-
-            // await lightBulb.GetStateAsync();
-            return (eLifxResponse.Success, this.Serialize());
-        }
 
         public async Task OffAsync()
         {
@@ -259,6 +283,7 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.Off, cts))
                 {
+                    Logger.Information($"LifxBulb - { Label } - Turning light off");
                     await this.Light.OffAsync(cts.Token);
                     this.Power = Power.Off;
                 }
@@ -280,6 +305,7 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.Off, cts))
                 {
+                    Logger.Information($"LifxBulb - { Label } - Turning light off for { durationInMilliseconds / 1000 } seconds");
                     await this.Light.OffAsync(durationInMilliseconds, cts.Token);
                     this.Power = Power.Off;
                 }
@@ -299,8 +325,10 @@ namespace LifxCoreController
             using (var cts = new CancellationTokenSource())
             {
                 cancellationToken.Register(cts.Cancel);
-                using (RaiseCommandRequested(eLifxCommand.Off, cts))
+                using (RaiseCommandRequested(eLifxCommand.On, cts))
                 {
+                    Logger.Information($"LifxBulb - { Label } - Turning light on");
+
                     await this.Light.OnAsync(cts.Token);
                     this.Power = Power.On;
                 }
@@ -322,6 +350,7 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.On, cts))
                 {
+                    Logger.Information($"LifxBulb - { Label } - Turning light on for { durationInMilliseconds / 1000 } seconds");
                     await this.Light.OnAsync(durationInMilliseconds, cts.Token);
                     this.Power = Power.On;
                 }
@@ -343,8 +372,19 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.SetBrightness, cts))
                 {
+                    if (this.Brightness == brightness.Value)
+                    {
+                        await this.GetStateAsync();
+                        if (this.Brightness == brightness.Value)
+                        {
+                            return;
+                        }
+                    }
+
+                    Logger.Information($"LifxBulb - SetBrightnessAsync - Setting brightness to { brightness.Value.ToString() }");
                     await this.Light.SetBrightnessAsync(brightness, cts.Token);
-                    this.Brightness = brightness.Value;
+                    await this.GetStateAsync();
+                    Logger.Information($"LifxBulb - SetBrightnessAsync - Brightness is set to { this.Brightness }");
                 }
             }
         }
@@ -465,16 +505,102 @@ namespace LifxCoreController
         }
         #endregion
 
+        /// <summary>
+        /// Brings the lightbulb to 100% over duration of time
+        /// </summary>
+        /// <param name="overTime">time in seconds for bulb to reach 100%</param>
+        /// <returns></returns>
+        public async Task<(eLifxResponse response, string data)> OnOverTimeAsync(int overTime = 0)
+        {
+            if (overTime == 0)
+            {
+                await this.OnAsync();
+                string serializedBulb = this.Serialize();
+                return (eLifxResponse.Success, serializedBulb);
+            }
+            else if (overTime < 0)
+            {
+                string msg = $"LifxBulb - OnOverTimeAsync - Can't turn on over { overTime } seconds";
+                Logger.Information(msg);
+                return (eLifxResponse.NoChange, msg);
+            }
+            Logger.Information($"LifxBulb - OnOverTimeAsync - Starting On Over Time operation");
+            Func<LightBulb, bool> condition = (x) => (x.Power == Power.On && x.Brightness == 1);
+            var sameCondition = await VerifyBulbState(condition);
+            if (sameCondition)
+            {
+                string serializedBulb = this.Serialize();
+                return ((int)eLifxResponse.Success, serializedBulb);
+            }
+            double initialBrightness = this.Power == Power.Off ? 0 : this.Brightness;
+            if (this.Power == Power.Off)
+            {
+                await this.SetBrightnessAsync(new Percentage(initialBrightness));
+                await this.OnAsync();
+            }
+
+            double singleStepProgression = CalculateSingleStep(overTime, initialBrightness);
+            // double nextBrightness = Math.Min(1, initialBrightness + singleStepProgression);
+
+            Logger.Information($"LifxBulb - OnOverTimeAsync - Initializing callback first time; step size: { singleStepProgression }");
+            Logger.Information($"LifxBulb - OnOverTimeAsync - actionQueueSize = { actionQueue.Count() }");
+
+            Logger.Information($"LifxBulb - OnOverTimeAsync - Enqueuing action to run");
+            Func<Task> nextAction = async () => await OnOverTimeCallbackAsync(singleStepProgression);
+            actionQueue.TryAdd(nextAction);
+
+            Logger.Information($"LifxBulb - OnOverTimeAsync - Reseting runner to work period");
+            actionRunner.Reset(WorkingPeriod);
+
+            return (eLifxResponse.Success, this.Serialize());
+        }
+
+        private double CalculateSingleStep(int overTime, double initialBrightness)
+        {
+            double overTimeInMiliseconds = 1000.0 * overTime;
+            double numberOfStepsToComplete = overTimeInMiliseconds / WorkingPeriod.TotalMilliseconds;
+            double totalBrightnessGap = (1.0 - initialBrightness);
+            double singleStepProgression = totalBrightnessGap / WorkingPeriod.TotalMilliseconds;
+            singleStepProgression = Math.Round(singleStepProgression, 4, MidpointRounding.ToEven);
+            singleStepProgression = Math.Max(singleStepProgression, 0.01);
+            singleStepProgression = Math.Min(singleStepProgression, 1);
+
+            return singleStepProgression;
+        }
+
+        private async Task OnOverTimeCallbackAsync(double singleStepProgression)
+        {
+            Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - Increasing brightness by { singleStepProgression }");
+
+            double nextBrightness = Math.Min(1, this.Brightness + singleStepProgression);
+            nextBrightness = Math.Round(nextBrightness, 4, MidpointRounding.ToEven);
+            Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - Increasing brightness to { nextBrightness } as part of OverTime operation");
+            var nextBrightnessPercentage = new Percentage(nextBrightness);
+            await this.SetBrightnessAsync(nextBrightnessPercentage);
+            await this.GetStateAsync();
+
+            Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - brightness set to { nextBrightnessPercentage } and value is: { this.Brightness }. Should queue more? { this.Brightness < 1.0 }");
+            if (this.Brightness < 1.0)
+            {
+                Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - setting to increase brightness by: { singleStepProgression }");
+                Func<Task> nextAction = async () => await OnOverTimeCallbackAsync(singleStepProgression);
+                actionQueue.TryAdd(nextAction);
+                Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - Enqueued new action. Total now: { actionQueue.Count() }");
+            }
+            Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - done");
+        } 
+        #endregion
+
         #region RaiseEvents
         object lockObject = new object();
 
         IDictionary<DateTime, CommandRequest> RequestedCommands = new Dictionary<DateTime, CommandRequest>();
         const int MaximumAllowedCommandsInFrame = 5;
         TimeSpan CommandRequestMaxLifeTime = TimeSpan.FromSeconds(30);
-        private const double SINGLE_PERCENT = 0.01;
 
         private LifxCommandCallback RaiseCommandRequested(eLifxCommand lifxCommand, CancellationTokenSource cancellationTokenSource)
         {
+            Logger.Information($"LifxBulb - RaiseCommandRequested - requested { lifxCommand.ToString() }");
             DateTime requestTime = DateTime.UtcNow;
             lock (lockObject)
             {
@@ -486,8 +612,13 @@ namespace LifxCoreController
                     throw new Exception("Maximum commands requested.");
                 }
 
+
                 // Add request to queue
                 AddRequestToQueue(lifxCommand, cancellationTokenSource, requestTime);
+                Thread.Sleep(100);
+                // Technically nothing else should be done after this. 
+                // The rest should be picked up by a runner.
+                // After the runner is done - it will remove the command from queue
             }
 
             return new LifxCommandCallback(() =>

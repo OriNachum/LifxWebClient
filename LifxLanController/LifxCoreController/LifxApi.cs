@@ -19,7 +19,7 @@ namespace LifxCoreController
         private readonly TimeSpan REFRESH_CYCLE_SLEEP_TIME = TimeSpan.FromMinutes(1);
         private DateTime? LastRefreshTime;
 
-        private Timer Timer;
+        private ITimer timer;
 
         ILogger _logger = null;
 
@@ -30,7 +30,7 @@ namespace LifxCoreController
                 if (_logger == null)
                 {
                     _logger = new LoggerConfiguration()
-                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log")
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log", shared: true)
                     .CreateLogger();
                 }
                 return _logger;
@@ -61,6 +61,8 @@ namespace LifxCoreController
             }
             catch (Exception ex)
             {
+                Logger.Information($"LifxApi - RefreshBulbsAsync failed { ex }");
+
                 return (eLifxResponse.ActionFailed, ex.ToString());
             }
         }
@@ -114,23 +116,9 @@ namespace LifxCoreController
             return (eLifxResponse.Success, bulbs);
         }
 
-        private async void StartAutoRefresh(TimeSpan updateSleepSpan)
+        private void StartAutoRefresh(TimeSpan updateSleepSpan)
         {
-            void ResetTimer(TimeSpan sleepSpan)
-            {
-                Timer.Change(sleepSpan, TimeSpan.FromMilliseconds(-1));
-            }
-            async void timerCallBackAsync(object state)
-            {
-                ResetTimer(TimeSpan.FromMilliseconds(-1));
-                await RefreshBulbsAsync();
-                ResetTimer(updateSleepSpan);
-            }
-            // Set Timer
-            // Add lock on all actions during timer action
-            await RefreshBulbsAsync();
-            Timer = new Timer(timerCallBackAsync);
-            ResetTimer(updateSleepSpan);
+            timer.InitializeCallback(async () => await RefreshBulbsAsync(), REFRESH_CYCLE_SLEEP_TIME);
         }
 
         public async Task<(eLifxResponse response, string data)> ToggleLightAsync(string label)
@@ -173,19 +161,32 @@ namespace LifxCoreController
             }
         }
 
-        public async Task<(eLifxResponse response, string data)> OnAsync(string label, int? overTime)
+        public async Task<(eLifxResponse response, string data, string bulb)> OffAsync(string label, int? overTime)
         {
+            Logger.Information($"LifxApi - OnAsync started light: { label }; overtime? { overTime ?? 0 }");
+
             LightBulb lightBulb = Lights.FirstOrDefault(x => x.Value.Label == label).Value;
-            if (overTime.HasValue)
+            /*if (overTime.HasValue)
             {
                 return await lightBulb.OnOverTimeAsync(overTime.Value);
             }
             else
-            {
-                await lightBulb.OnAsync();
-                string serializedBulb = lightBulb.Serialize();
-                return (eLifxResponse.Success, serializedBulb);
-            }
+            {*/
+                await lightBulb.OffAsync();
+                string bulb = lightBulb.Serialize();
+                return (eLifxResponse.Success, "", bulb);
+            //}
+        }
+
+        public async Task<(eLifxResponse response, string data, string bulb)> OnAsync(string label, int? overTime)
+        {
+            Logger.Information($"LifxApi - OnAsync started light: { label }; overtime? { overTime ?? 0 }");
+
+            LightBulb lightBulb = Lights.FirstOrDefault(x => x.Value.Label == label).Value;
+            await lightBulb.OnOverTimeAsync(overTime.HasValue ? overTime.Value : 0);
+
+            string bulb = lightBulb.Serialize();
+            return (eLifxResponse.Success, "", bulb);
         }
 
         private bool IsLightListObsolete()
@@ -196,8 +197,8 @@ namespace LifxCoreController
 
         public override void Dispose()
         {
-            Timer.Dispose();
-            Timer = null;
+            timer?.Dispose();
+            timer = null;
             base.Dispose();
         }
     }
