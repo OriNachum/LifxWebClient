@@ -188,6 +188,7 @@ namespace LifxCoreController
                     LightState newState = await this.Light.GetStateAsync(cts.Token);
                     this.LastVerifiedState = newState;
                     this.StateVerificationTimeUtc = DateTime.UtcNow;
+                    Logger.Information($"LifxBulb - { this.ToString() }");
                     return newState;
                 }
             }
@@ -209,7 +210,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetLabel, cts))
                 {
                     await this.Light.SetLabelAsync(label, cts.Token);
-                    this.Label = label.Value;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                     return;
                 }
             }
@@ -231,7 +233,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetPower, cts))
                 {
                     await this.Light.SetPowerAsync(power, cts.Token);
-                    this.Power = power;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -252,7 +255,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetPower, cts))
                 {
                     await this.Light.SetPowerAsync(power, durationInMilliseconds, cts.Token);
-                    this.Power = power;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -285,7 +289,8 @@ namespace LifxCoreController
                 {
                     Logger.Information($"LifxBulb - { Label } - Turning light off");
                     await this.Light.OffAsync(cts.Token);
-                    this.Power = Power.Off;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -307,7 +312,8 @@ namespace LifxCoreController
                 {
                     Logger.Information($"LifxBulb - { Label } - Turning light off for { durationInMilliseconds / 1000 } seconds");
                     await this.Light.OffAsync(durationInMilliseconds, cts.Token);
-                    this.Power = Power.Off;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -330,7 +336,8 @@ namespace LifxCoreController
                     Logger.Information($"LifxBulb - { Label } - Turning light on");
 
                     await this.Light.OnAsync(cts.Token);
-                    this.Power = Power.On;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -352,7 +359,8 @@ namespace LifxCoreController
                 {
                     Logger.Information($"LifxBulb - { Label } - Turning light on for { durationInMilliseconds / 1000 } seconds");
                     await this.Light.OnAsync(durationInMilliseconds, cts.Token);
-                    this.Power = Power.On;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -383,8 +391,17 @@ namespace LifxCoreController
 
                     Logger.Information($"LifxBulb - SetBrightnessAsync - Setting brightness to { brightness.Value.ToString() }");
                     await this.Light.SetBrightnessAsync(brightness, cts.Token);
-                    await this.GetStateAsync();
+                    Thread.Sleep(100);
+                    int count = 0;
+                    Logger.Information($"LifxBulb - SetBrightnessAsync - request sent - verifying");
+                    while (count < 3 && 
+                        await this.VerifyBulbState((bulb) => bulb.Brightness.Equals(brightness)) is bool stateNotChanged && 
+                        stateNotChanged)
+                    {
+                        Thread.Sleep(100);
+                    }
                     Logger.Information($"LifxBulb - SetBrightnessAsync - Brightness is set to { this.Brightness }");
+
                 }
             }
         }
@@ -405,7 +422,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetBrightness, cts))
                 {
                     await this.Light.SetBrightnessAsync(brightness, durationInMilliseconds, cts.Token);
-                    this.Brightness = brightness.Value;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -426,7 +444,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetTemperature, cts))
                 {
                     await this.Light.SetTemperatureAsync(temperature, cts.Token);
-                    this.Temperature = temperature.Value;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -447,7 +466,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetTemperature, cts))
                 {
                     await this.Light.SetTemperatureAsync(temperature, durationInMilliseconds, cts.Token);
-                    this.Temperature = temperature.Value;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -468,8 +488,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetColor, cts))
                 {
                     await this.Light.SetColorAsync(color, cts.Token);
-                    this.ColorHue = color.Hue;
-                    this.ColorSaturation = color.Saturation;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -490,8 +510,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetColor, cts))
                 {
                     await this.Light.SetColorAsync(color, durationInMilliseconds, cts.Token);
-                    this.ColorHue = color.Hue;
-                    this.ColorSaturation = color.Saturation;
+                    Thread.Sleep(100);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -533,6 +553,7 @@ namespace LifxCoreController
                 return ((int)eLifxResponse.Success, serializedBulb);
             }
             double initialBrightness = this.Power == Power.Off ? 0 : this.Brightness;
+            Logger.Information($"LifxBulb - OnOverTimeAsync - bulb power is: { this.Power.ToString() }, initial brightness: { initialBrightness }");
             if (this.Power == Power.Off)
             {
                 await this.SetBrightnessAsync(new Percentage(initialBrightness));
@@ -577,7 +598,7 @@ namespace LifxCoreController
             Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - Increasing brightness to { nextBrightness } as part of OverTime operation");
             var nextBrightnessPercentage = new Percentage(nextBrightness);
             await this.SetBrightnessAsync(nextBrightnessPercentage);
-            await this.GetStateAsync();
+            // await this.GetStateAsync();
 
             Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - brightness set to { nextBrightnessPercentage } and value is: { this.Brightness }. Should queue more? { this.Brightness < 1.0 }");
             if (this.Brightness < 1.0)
@@ -596,6 +617,7 @@ namespace LifxCoreController
 
         IDictionary<DateTime, CommandRequest> RequestedCommands = new Dictionary<DateTime, CommandRequest>();
         const int MaximumAllowedCommandsInFrame = 5;
+        private const int GapBetweenCommandMilliseconds = 100;
         TimeSpan CommandRequestMaxLifeTime = TimeSpan.FromSeconds(30);
 
         private LifxCommandCallback RaiseCommandRequested(eLifxCommand lifxCommand, CancellationTokenSource cancellationTokenSource)
@@ -615,7 +637,7 @@ namespace LifxCoreController
 
                 // Add request to queue
                 AddRequestToQueue(lifxCommand, cancellationTokenSource, requestTime);
-                Thread.Sleep(100);
+                Thread.Sleep(GapBetweenCommandMilliseconds);
                 // Technically nothing else should be done after this. 
                 // The rest should be picked up by a runner.
                 // After the runner is done - it will remove the command from queue
