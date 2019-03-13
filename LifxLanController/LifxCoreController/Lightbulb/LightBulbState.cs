@@ -156,7 +156,7 @@ namespace LifxCoreController.Lightbulb
 
         private double? FilterBetweenLimits(double minValue, double value, double maxValue)
         {
-            if (value < minValue) return value;
+            if (value < minValue) return minValue;
             if (value > maxValue) return maxValue;
             return value;
         }
