@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LifxCoreController
+namespace LifxCoreController.Lightbulb
 {
     public class LightBulb : ILightBulb
     {
@@ -18,11 +18,8 @@ namespace LifxCoreController
         public ILight Light { get; }
 
         public string Label { get; private set; }
-        public Power Power { get; private set; }
-        public int Temperature { get; private set; }
-        public double Brightness { get; private set; }
-        public int ColorHue { get; private set; }
-        public double ColorSaturation { get; private set; }
+
+        public LightBulbState State { get; set; }
 
         private LightState? _lastVerifiedState;
 
@@ -40,11 +37,7 @@ namespace LifxCoreController
                 {
                     LightState state = _lastVerifiedState.Value;
                     this.Label = state.Label.Value;
-                    this.Power = state.Power;
-                    this.Temperature = state.Temperature.Value;
-                    this.Brightness = state.Brightness.Value;
-                    this.ColorHue = state.Color.Hue.Value;
-                    this.ColorSaturation = state.Color.Saturation.Value;
+                    this.State = new LightBulbState(_lastVerifiedState.Value, enforceLimits: true);
                 }
             }
         }
@@ -89,7 +82,15 @@ namespace LifxCoreController
             Logger.Information($"LifxBulb - CheckActionQueue - { actionQueue.Count() } items in action queue");
             if (actionQueue.Any() && actionQueue.TryTake(out Func<Task> unqueuedAction))
             {
-                await unqueuedAction();
+                try
+                {
+                    await unqueuedAction();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"LightBulb - CheckActionQueueAsync - unqueuedAction throw an exception: { ex }");
+                    throw;
+                }
             }
             else
             {
@@ -116,6 +117,11 @@ namespace LifxCoreController
 
         public LightBulb(ILight light, LightState state, ILogger logger = null)
         {
+            if (logger != null)
+            {
+                _logger = logger;
+            }
+
             this.Light = light;
 
             this.Address = light.Address;
@@ -125,12 +131,7 @@ namespace LifxCoreController
             this.LastVerifiedState = state;
             this.StateVerificationTimeUtc = DateTime.UtcNow;
 
-            if (logger != null)
-            {
-                _logger = logger;
-            }
-
-            Logger.Information($"LifxBulb - { Label } - Registered Light");
+            Logger.Information($"LifxBulb - Registered new light: { this }");
 
             actionRunner = new GapBasedTimer(CheckActionQueueAsync, IdlePeriod, Logger);
             actionRunner.InitializeCallback(CheckActionQueueAsync, IdlePeriod);
@@ -140,15 +141,11 @@ namespace LifxCoreController
         {
             var sb = new StringBuilder();
             sb.Append($"Name: { Label }; ");
-            sb.Append($"IP: { IPv4Address }");
+            sb.Append($"IP: { IPv4Address }; ");
             sb.Append($"Product: { Product }; ");
             sb.Append($"Version: { Version }; ");
-            sb.Append($"Power: { Power }; ");
-            sb.Append($"Temperature: { Temperature }; ");
-            sb.Append($"Brightness: { Brightness }; ");
-            sb.Append($"ColorHue: { ColorHue }; ");
-            sb.Append($"ColorSaturation: { ColorSaturation }; ");
-            sb.Append($"LastVerifiedState: { StateVerificationTimeUtc.ToShortTimeString() }; ");
+            sb.Append($"State: { State }; ");
+            sb.Append($"LastVerifiedStateTime: { StateVerificationTimeUtc.ToShortTimeString() } UTC; ");
             sb.Append($"");
             return sb.ToString();
         }
@@ -186,9 +183,11 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.GetState, cts))
                 {
                     LightState newState = await this.Light.GetStateAsync(cts.Token);
+
+                    // Thread.Sleep(100); ? 
                     this.LastVerifiedState = newState;
                     this.StateVerificationTimeUtc = DateTime.UtcNow;
-                    Logger.Information($"LifxBulb - { this.ToString() }");
+                    Logger.Information($"LifxBulb - state refreshed: { this.State }");
                     return newState;
                 }
             }
@@ -380,10 +379,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.SetBrightness, cts))
                 {
-                    if (this.Brightness == brightness.Value)
+                    if (this.State.Brightness == brightness.Value)
                     {
                         await this.GetStateAsync();
-                        if (this.Brightness == brightness.Value)
+                        if (this.State.Brightness == brightness.Value)
                         {
                             return;
                         }
@@ -395,12 +394,12 @@ namespace LifxCoreController
                     int count = 0;
                     Logger.Information($"LifxBulb - SetBrightnessAsync - request sent - verifying");
                     while (count < 3 && 
-                        await this.VerifyBulbState((bulb) => bulb.Brightness.Equals(brightness)) is bool stateNotChanged && 
+                        await this.VerifyBulbState((bulb) => bulb.State.Brightness.Equals(brightness)) is bool stateNotChanged && 
                         stateNotChanged)
                     {
                         Thread.Sleep(100);
                     }
-                    Logger.Information($"LifxBulb - SetBrightnessAsync - Brightness is set to { this.Brightness }");
+                    Logger.Information($"LifxBulb - SetBrightnessAsync - Brightness is set to { this.State.Brightness }");
 
                 }
             }
@@ -525,6 +524,7 @@ namespace LifxCoreController
         }
         #endregion
 
+        #region OnOverTime
         /// <summary>
         /// Brings the lightbulb to 100% over duration of time
         /// </summary>
@@ -545,22 +545,22 @@ namespace LifxCoreController
                 return (eLifxResponse.NoChange, msg);
             }
             Logger.Information($"LifxBulb - OnOverTimeAsync - Starting On Over Time operation");
-            Func<LightBulb, bool> condition = (x) => (x.Power == Power.On && x.Brightness == 1);
+            Func<LightBulb, bool> condition = (x) => (x.State.Power == Power.On && x.State.Brightness == 1);
             var sameCondition = await VerifyBulbState(condition);
             if (sameCondition)
             {
                 string serializedBulb = this.Serialize();
                 return ((int)eLifxResponse.Success, serializedBulb);
             }
-            double initialBrightness = this.Power == Power.Off ? 0 : this.Brightness;
-            Logger.Information($"LifxBulb - OnOverTimeAsync - bulb power is: { this.Power.ToString() }, initial brightness: { initialBrightness }");
-            if (this.Power == Power.Off)
+            double initialBrightness = this.State.Power == Power.Off ? 0 : this.State.Brightness.Value;
+            Logger.Information($"LifxBulb - OnOverTimeAsync - bulb power is: { this.State.Power.ToString() }, initial brightness: { initialBrightness }");
+            if (this.State.Power == Power.Off)
             {
                 await this.SetBrightnessAsync(new Percentage(initialBrightness));
                 await this.OnAsync();
             }
 
-            double singleStepProgression = CalculateSingleStep(overTime, initialBrightness);
+            double singleStepProgression = CalculateSingleStep(overTime, initialBrightness, 1.0);
             // double nextBrightness = Math.Min(1, initialBrightness + singleStepProgression);
 
             Logger.Information($"LifxBulb - OnOverTimeAsync - Initializing callback first time; step size: { singleStepProgression }");
@@ -575,12 +575,11 @@ namespace LifxCoreController
 
             return (eLifxResponse.Success, this.Serialize());
         }
-
-        private double CalculateSingleStep(int overTime, double initialBrightness)
+        private double CalculateSingleStep(long overTime, double initialBrightness, double endBrightness)
         {
             double overTimeInMiliseconds = 1000.0 * overTime;
             double numberOfStepsToComplete = overTimeInMiliseconds / WorkingPeriod.TotalMilliseconds;
-            double totalBrightnessGap = (1.0 - initialBrightness);
+            double totalBrightnessGap = (endBrightness - initialBrightness);
             double singleStepProgression = totalBrightnessGap / WorkingPeriod.TotalMilliseconds;
             singleStepProgression = Math.Round(singleStepProgression, 4, MidpointRounding.ToEven);
             singleStepProgression = Math.Max(singleStepProgression, 0.01);
@@ -588,20 +587,19 @@ namespace LifxCoreController
 
             return singleStepProgression;
         }
-
         private async Task OnOverTimeCallbackAsync(double singleStepProgression)
         {
             Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - Increasing brightness by { singleStepProgression }");
 
-            double nextBrightness = Math.Min(1, this.Brightness + singleStepProgression);
+            double nextBrightness = Math.Min(1, this.State.Brightness.Value + singleStepProgression);
             nextBrightness = Math.Round(nextBrightness, 4, MidpointRounding.ToEven);
             Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - Increasing brightness to { nextBrightness } as part of OverTime operation");
             var nextBrightnessPercentage = new Percentage(nextBrightness);
             await this.SetBrightnessAsync(nextBrightnessPercentage);
             // await this.GetStateAsync();
 
-            Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - brightness set to { nextBrightnessPercentage } and value is: { this.Brightness }. Should queue more? { this.Brightness < 1.0 }");
-            if (this.Brightness < 1.0)
+            Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - brightness set to { nextBrightnessPercentage } and value is: { this.State.Brightness }. Should queue more? { this.State.Brightness < 1.0 }");
+            if (this.State.Brightness < 1.0)
             {
                 Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - setting to increase brightness by: { singleStepProgression }");
                 Func<Task> nextAction = async () => await OnOverTimeCallbackAsync(singleStepProgression);
@@ -609,7 +607,188 @@ namespace LifxCoreController
                 Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - Enqueued new action. Total now: { actionQueue.Count() }");
             }
             Logger.Information($"LifxBulb - OnOverTimeCallbackAsync - done");
-        } 
+        }
+        #endregion
+
+        #region StateOverTime
+        /// <summary>
+        /// Brings the lightbulb to 100% over duration of time
+        /// BUG: End condition not met, continues indefenitely.
+        /// TODO: Change from 'step' to 'function(currentTime)' which will be generated in SetStateOverTimeAsync
+        /// </summary>
+        /// <param name="fadeInDuration">time in miliseconds for bulb to reach state</param>
+        /// <returns></returns>
+        public async Task<(eLifxResponse response, string message, string bulb)> SetStateOverTimeAsync(LightBulbState state, long fadeInDuration = 0)
+        {
+            Logger.Information($"LifxBulb - SetStateOverTimeAsync - fadeInDuration: { fadeInDuration }; state: { state }");
+
+            if (fadeInDuration == 0)
+            {
+                await this.SetStateAsync(state);
+                string serializedBulb = this.Serialize();
+                return (eLifxResponse.Success, "Immediate success", serializedBulb);
+            }
+            else if (fadeInDuration < 0)
+            {
+                string msg = $"LifxBulb - SetStateOverTimeAsync - Can't turn on over { fadeInDuration } seconds";
+                Logger.Information(msg);
+                string serializedBulb = this.Serialize();
+                return (eLifxResponse.NoChange, msg, serializedBulb);
+            }
+
+            Logger.Information($"LifxBulb - SetStateOverTimeAsync - Verifying bulb state");
+            var sameCondition = await VerifyBulbState(LightBulb => LightBulb.IsCurrentState(state));
+            if (sameCondition)
+            {
+                Logger.Information($"LifxBulb - SetStateOverTimeAsync - state already applied");
+                string serializedBulb = this.Serialize();
+                return ((int)eLifxResponse.Success, "No change", serializedBulb);
+            }
+            LightBulbState initialState = new LightBulbState(LastVerifiedState.Value, enforceLimits: true);
+            Logger.Information($"LifxBulb - SetStateOverTimeAsync - initial state is: { initialState }");
+            if (this.State.Power == Power.Off)
+            {
+                await this.SetBrightnessAsync(new Percentage(0));
+                await this.OnAsync();
+            }
+
+            int stateStepAccuracy = 10000;
+            LightBulbState singleStepStateProgression = CalculateSingleStateStep(fadeInDuration / stateStepAccuracy, initialState, state);
+
+            Logger.Information($"LifxBulb - SetStateOverTimeAsync - Step is: { singleStepStateProgression }");
+            LightBulbState startState = initialState.Copy();
+
+            DateTime setStateStartTime = DateTime.UtcNow;
+            Func<LightBulbState> GetNextState = () =>
+            {
+                Logger.Information($"LifxBulb - GetNextState - Calculating next state, base step is { singleStepStateProgression }");
+
+                double durationSinceStart = (DateTime.UtcNow - setStateStartTime).TotalMilliseconds;
+                Logger.Information($"LifxBulb - GetNextState - time passed since start: { durationSinceStart }ms");
+
+                double factor = durationSinceStart / stateStepAccuracy;
+                Logger.Information($"LifxBulb - GetNextState - factor to multiply: { factor }ms");
+
+                LightBulbState stateDifference = LightBulbState.MultiplyState(singleStepStateProgression, factor, enforceLimits: false);
+                Logger.Information($"LifxBulb - GetNextState - add : { stateDifference } to start state { startState }");
+
+                LightBulbState newStateToSet = LightBulbState.AddStates(startState, stateDifference, enforceLimits: true);
+                Logger.Information($"LifxBulb - GetNextState - new state should be: { newStateToSet }");
+
+                return newStateToSet;
+            };
+
+            DateTime endTime = setStateStartTime.AddMilliseconds(fadeInDuration);
+            Logger.Information($"LifxBulb - OnOverTimeAsync - Enqueuing action to run");
+            Func<Task> nextAction = async () => await SetStateOverTimeCallbackAsync(GetNextState, state, endTime);
+            actionQueue.TryAdd(nextAction);
+
+            Logger.Information($"LifxBulb - OnOverTimeAsync - Reseting runner to work period");
+            actionRunner.Reset(WorkingPeriod);
+
+            return (eLifxResponse.Success, "Success", this.Serialize());
+        }
+
+        public bool IsCurrentState(LightBulbState state)
+        {
+            Logger.Information($"LifxBulb - IsCurrentState - comparing to { state }");
+
+            if (!this.LastVerifiedState.HasValue)
+            {
+                return false;
+            }
+            var currentState = new LightBulbState(this.LastVerifiedState.Value, enforceLimits: false);
+            Logger.Information($"LifxBulb - IsCurrentState - current state is { currentState }");
+            return currentState.Equals(state);
+        }
+
+        private LightBulbState CalculateSingleStateStep(long overtime, LightBulbState initialState, LightBulbState endState)
+        {
+            Logger.Information($"LifxBulb - CalculateSingleStateStep - initial state is { initialState }");
+            Logger.Information($"LifxBulb - CalculateSingleStateStep - end state is: { endState }");
+            Logger.Information($"LifxBulb - CalculateSingleStateStep - overtime: { overtime }");
+
+            //double numberOfMilliseconds = Math.Max(1, overtime / WorkingPeriod.TotalMilliseconds);
+            //Logger.Information($"LifxBulb - IsCurrentState - fadeInTime: { numberOfMilliseconds }");
+
+            LightBulbState singleStepState = LightBulbState.SubtractState(initialState, endState, enforceLimits: false);
+            Logger.Information($"LifxBulb - CalculateSingleStateStep - difference state is { singleStepState }");
+
+            singleStepState = LightBulbState.DivideStep(singleStepState, overtime, enforceLimits: false);
+            Logger.Information($"LifxBulb - CalculateSingleStateStep - divided state is { singleStepState }");
+
+            return singleStepState;
+        }
+
+        private async Task<LightState> SetStateAsync(LightBulbState state)
+        {
+            await this.GetStateAsync();
+            LightState lastVerifiedState = this.LastVerifiedState.Value;
+            if (state.Power.HasValue && this.State.Power != state.Power)
+            {
+                await this.SetPowerAsync(state.Power.Value);
+            }
+
+            if (state.Brightness.HasValue && this.State.Brightness != state.Brightness)
+            {
+                await this.SetBrightnessAsync(state.Brightness.Value);
+            }
+
+            if ((state.ColorHue.HasValue && this.State.ColorHue != state.ColorHue) ||
+                (state.ColorSaturation.HasValue && this.State.ColorSaturation != state.ColorSaturation))
+            {
+                await this.SetPowerAsync(state.Power.Value);
+            }
+
+            if (state.Temperature.HasValue && this.State.Temperature != state.Temperature)
+            {
+                await this.SetTemperatureAsync(state.Temperature.Value);
+            }
+            lastVerifiedState = this.LastVerifiedState ?? this.LastVerifiedState.Value;
+
+            return lastVerifiedState;
+        }
+
+        private async Task SetStateOverTimeCallbackAsync(Func<LightBulbState> getNextState, LightBulbState finalState, DateTime endTime)
+        {
+            //Logger.Information($"LifxBulb - SetStateOverTimeCallbackAsync - Increasing brightness by { singleStepProgressionState }");
+            LightBulbState nextState = getNextState();
+            //LightBulbState nextState = LightBulbState.AddStates(new LightBulbState(currentState), singleStepProgressionState);
+            bool finalStep = DateTime.UtcNow >= endTime;
+            if (DateTime.UtcNow >= endTime)
+            {
+                nextState = finalState;
+            }
+
+            Logger.Information($"LifxBulb - SetStateOverTimeCallbackAsync - changing state to { nextState } as part of OverTime operation");
+            int numberOfTries = finalStep ? 5 : 1; 
+            while (numberOfTries > 0)
+            {
+                try
+                {
+                    LightState newState = await this.SetStateAsync(nextState);
+                    var newBulbState = new LightBulbState(newState, enforceLimits: false);
+                    Logger.Information($"LifxBulb - SetStateOverTimeCallbackAsync - new state is: { newBulbState }");
+                    break;
+                }
+                catch (OperationCanceledException ex)
+                {
+                    Logger.Warning($"LifxBulb - SetStateOverTimeCallbackAsync - attempt { numberOfTries } to set state: { nextState } failed");
+                    numberOfTries -= 1;
+                    Thread.Sleep(400);
+                }
+            }
+
+            if (!finalStep)
+            {
+                //Logger.Information($"LifxBulb - SetStateOverTimeCallbackAsync - setting to increase brightness by: { singleStepProgressionState }");
+                Func<Task> nextAction = async () => await SetStateOverTimeCallbackAsync(getNextState, finalState, endTime);
+                actionQueue.TryAdd(nextAction);
+                Logger.Information($"LifxBulb - SetStateOverTimeCallbackAsync - Enqueued new action. Total now: { actionQueue.Count() }");
+            }
+            Logger.Information($"LifxBulb - SetStateOverTimeCallbackAsync - done");
+        }
+        #endregion        
         #endregion
 
         #region RaiseEvents
@@ -675,6 +854,11 @@ namespace LifxCoreController
                 command.TokenSource.Cancel();
                 RequestedCommands.Remove(command.Key);
             }
+        }
+
+        public LightBulbState GetState()
+        {
+            return this.State.Copy();
         }
         #endregion
 

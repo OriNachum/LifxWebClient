@@ -1,4 +1,5 @@
 ﻿using Lifx;
+using LifxCoreController.Lightbulb;
 using Newtonsoft.Json;
 using Serilog;
 using System;
@@ -28,7 +29,7 @@ namespace LifxCoreController
                 if (_logger == null)
                 {
                     _logger = new LoggerConfiguration()
-                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log", shared: true)
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\LifxDetector.log", shared: true)
                     .CreateLogger();
                 }
                 return _logger;
@@ -177,7 +178,10 @@ namespace LifxCoreController
                     sb.Append($"|CandidateIP: { candidateIpAddress } ");
                     sb.Append($"|All Ips: {_lights.Keys.Select(x => string.Join(".", x.GetAddressBytes())) } ");
                     sb.Append($"|All Lights: { serializedLights } { Environment.NewLine } ");
-                    throw new Exception(sb.ToString(), ex);
+
+                    string errorMessage = sb.ToString();
+                    _logger.Warning(errorMessage + $" ex: { ex }");
+                    throw new Exception(errorMessage, ex);
                 }
 
                 lock (lightsLock)
@@ -205,7 +209,7 @@ namespace LifxCoreController
 
         }
 
-        private static async Task<ILight> CreateLightMuffleExceptionAsync(LightFactory lightFactory, IPAddress candidateIpAddress, CancellationToken cancellationToken)
+        private async Task<ILight> CreateLightMuffleExceptionAsync(LightFactory lightFactory, IPAddress candidateIpAddress, CancellationToken cancellationToken)
         {
             ILight light = null;
             using (var cts = new CancellationTokenSource())
@@ -219,6 +223,7 @@ namespace LifxCoreController
                 }
                 catch (Exception ex)
                 {
+                    _logger.Warning($"Failed to create light with IP: { string.Join('.',candidateIpAddress.GetAddressBytes()) }. Ex: { ex } ");
                     light?.Dispose();
                     light = null;
                     cts.Cancel();

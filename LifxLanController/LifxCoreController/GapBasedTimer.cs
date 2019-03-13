@@ -49,7 +49,15 @@ namespace LifxCoreController
             {
                 ScheduleTimerToRun(NEVER);
                 _logger?.Information("GapBasedTimer - timerCallBackWrapper - calling action");
-                await timerCallbackAsync();
+                try
+                {
+                    await timerCallbackAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"GapBasedTimer - InitializeCallback - timerCallbackAsync throw an exception: { ex }");
+                    throw;
+                }
                 ScheduleTimerToRun(timerSleepSpan);
             }
 

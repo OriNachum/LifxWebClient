@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Lifx;
 using LifxCoreController;
+using LifxCoreController.Lightbulb;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
@@ -44,7 +45,7 @@ namespace LifxWebApi.Controllers
                 if (_logger == null)
                 {
                     _logger = new LoggerConfiguration()
-                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log", shared: true)
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\ApiController.log", shared: true)
                     .CreateLogger();
                 }
                 return _logger;
@@ -128,6 +129,20 @@ namespace LifxWebApi.Controllers
             var (response, messages, bulb) = await Lifx.OnAsync(label, overTime);
             return new { responseType = (int)response, responseData = messages, bulb };
         }
+
+        
+        [HttpGet("FadeToState")]
+        public async Task<ActionResult<object>> FadeToState(string label, string serializedState, long? fadeInDuration)
+        {
+            Logger.Information($"ApiController - FadeToState - label: { label }; state: { serializedState }; overtime: { fadeInDuration }");
+
+            LightBulbState state = JsonConvert.DeserializeObject<LightBulbState>(serializedState);
+            Logger.Information($"ApiController - deserialized state: { state }");
+
+            var (response, messages, bulb) = await Lifx.SetStateOverTimeAsync(label, state, fadeInDuration);
+            return new { responseType = (int)response, responseData = messages, bulb };
+        }
+
 
         // GET api/values/5
         [HttpGet("SetBrightness")]

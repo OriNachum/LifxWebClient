@@ -1,4 +1,5 @@
 ﻿using Lifx;
+using LifxCoreController.Lightbulb;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -27,5 +28,6 @@ namespace LifxCoreController
         Task<(eLifxResponse response, string data)> ToggleLightAsync(string label);
         Task<(eLifxResponse response, string data, string bulb)> OnAsync(string label, int? fadeDuration);
         Task<(eLifxResponse response, string data, string bulb)> OffAsync(string label, int? fadeDuration);
+        Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, LightBulbState state, long? fadeInDuration);
     }
 }

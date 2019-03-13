@@ -1,4 +1,5 @@
 ﻿using Lifx;
+using LifxCoreController.Lightbulb;
 using Newtonsoft.Json;
 using Serilog;
 using System;
@@ -30,7 +31,7 @@ namespace LifxCoreController
                 if (_logger == null)
                 {
                     _logger = new LoggerConfiguration()
-                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\1.log", shared: true)
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\LifxApi.log", shared: true)
                     .CreateLogger();
                 }
                 return _logger;
@@ -143,7 +144,7 @@ namespace LifxCoreController
                 {
                     return (eLifxResponse.BulbDoesntExist, "Couldn't locate bulb by label");
                 }
-                if (light.Power == Power.Off)
+                if (light.GetState().Power == Power.Off)
                 {
                     await light.OnAsync(); // Start developing a new Light, expose State, expose delay on light
                 }
@@ -187,6 +188,16 @@ namespace LifxCoreController
 
             string bulb = lightBulb.Serialize();
             return (eLifxResponse.Success, "", bulb);
+        }
+
+        public async Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, LightBulbState state, long? fadeInDuration)
+        {
+            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; overtime? { fadeInDuration }");
+
+            LightBulb lightBulb = Lights.FirstOrDefault(x => x.Value.Label == label).Value;
+            long fadeInDurationValue = fadeInDuration.HasValue ? fadeInDuration.Value : 0;
+            var (response, date, bulb) = await lightBulb.SetStateOverTimeAsync(state, fadeInDurationValue);
+            return (response, date, bulb);
         }
 
         private bool IsLightListObsolete()
