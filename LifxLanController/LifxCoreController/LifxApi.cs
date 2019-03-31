@@ -184,13 +184,13 @@ namespace LifxCoreController
             string bulb = lightBulb.Serialize();
             return (eLifxResponse.Success, "", bulb);
         }
-
+        
         public async Task<(eLifxResponse response, string data, string bulb)> OnAsync(string label, int? overTime)
         {
             Logger.Information($"LifxApi - OnAsync started light: { label }; overtime? { overTime ?? 0 }");
 
             IBulb lightBulb = Bulbs.FirstOrDefault(x => x.Value.Label == label).Value;
-            await lightBulb.OnOverTimeAsync(overTime.HasValue ? overTime.Value : 0);
+            await lightBulb.OnAsync();
 
             string bulb = lightBulb.Serialize();
             return (eLifxResponse.Success, "", bulb);
@@ -202,7 +202,7 @@ namespace LifxCoreController
 
             try
             {
-                IBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                IAdvancedBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
                 if (bulb == null)
                 {
                     Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");

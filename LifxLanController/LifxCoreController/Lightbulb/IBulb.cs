@@ -12,8 +12,6 @@ namespace LifxCoreController.Lightbulb
         string Serialize();
 
         Task<LightState> GetStateAsync(CancellationToken token);
-        Task<(eLifxResponse response, string data)> OnOverTimeAsync(int v);
-        Task<(eLifxResponse response, string message, string bulb)> SetStateOverTimeAsync(IBulbState state, long fadeInDurationValue);
         Task OnAsync();
         Task OffAsync();
         void Dispose();

@@ -36,9 +36,9 @@ namespace LifxCoreController
             }
         }
 
-        private IDictionary<IPAddress, IBulb> _bulbs { get; set; }
+        private IDictionary<IPAddress, IAdvancedBulb> _bulbs { get; set; }
 
-        public IDictionary<IPAddress, IBulb> Bulbs
+        public IDictionary<IPAddress, IAdvancedBulb> Bulbs
         {
             get
             {
@@ -48,7 +48,7 @@ namespace LifxCoreController
 
         public LifxDetector()
         {
-            _bulbs = new ConcurrentDictionary<IPAddress, IBulb>();
+            _bulbs = new ConcurrentDictionary<IPAddress, IAdvancedBulb>();
         }
 
         object DetectionStartedLock = new object();
@@ -192,7 +192,7 @@ namespace LifxCoreController
                         .WriteTo.File($"C:\\Logs\\LifxWebApi\\{ state.Value.Label.Value }.log", shared: true)
                         .CreateLogger();
 
-                        var lightBulb = new Bulb(light, state.Value, bulbLogger);
+                        var lightBulb = new AdvancedBulb(light, state.Value, bulbLogger);
                         _bulbs.Add(candidateIpAddress, lightBulb);
                         _logger.Information($"Added light { state.Value.Label.Value }, with IP: { string.Join('.', candidateIpAddress.GetAddressBytes()) }");
                     }
