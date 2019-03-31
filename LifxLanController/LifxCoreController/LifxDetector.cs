@@ -36,19 +36,19 @@ namespace LifxCoreController
             }
         }
 
-        private IDictionary<IPAddress, LightBulb> _lights { get; set; }
+        private IDictionary<IPAddress, IBulb> _bulbs { get; set; }
 
-        public IDictionary<IPAddress, LightBulb> Lights
+        public IDictionary<IPAddress, IBulb> Bulbs
         {
             get
             {
-                return _lights;
+                return _bulbs;
             }
         }
 
         public LifxDetector()
         {
-            _lights = new ConcurrentDictionary<IPAddress, LightBulb>();
+            _bulbs = new ConcurrentDictionary<IPAddress, IBulb>();
         }
 
         object DetectionStartedLock = new object();
@@ -74,7 +74,7 @@ namespace LifxCoreController
                 IEnumerable<IPAddress> allIpsInNetwork = await GetAllIpsInNetworkAsync();
                 lock (lightsLock)
                 {
-                    IEnumerable<IPAddress> deadIps = _lights.Keys.Where(x => !allIpsInNetwork.Contains(x));
+                    IEnumerable<IPAddress> deadIps = _bulbs.Keys.Where(x => !allIpsInNetwork.Contains(x));
                     foreach (IPAddress ipAddress in deadIps)
                     {
                         RemoveLightBulb(ipAddress);
@@ -96,7 +96,7 @@ namespace LifxCoreController
         private async Task GetAllLightsStates(CancellationToken cancellationToken)
         {
             var getStateTasks = new List<Task<LightState>>();
-            foreach (LightBulb light in Lights.Values)
+            foreach (Bulb light in Bulbs.Values)
             {
                 getStateTasks.Add(light.GetStateAsync());
             }
@@ -138,7 +138,7 @@ namespace LifxCoreController
                 ILight light = null;
                 lock (lightsLock)
                 {
-                    knownIP = _lights.ContainsKey(candidateIpAddress);
+                    knownIP = _bulbs.ContainsKey(candidateIpAddress);
                 }
                 if (!knownIP)
                 {
@@ -153,7 +153,7 @@ namespace LifxCoreController
             bool lightKnown = false;
             lock (lightsLock)
             {
-                lightKnown = _lights.ContainsKey(candidateIpAddress);
+                lightKnown = _bulbs.ContainsKey(candidateIpAddress);
             }
             if (lightKnown)
             {
@@ -172,11 +172,11 @@ namespace LifxCoreController
                 {
                     light.Dispose();
 
-                    string serializedLights = JsonConvert.SerializeObject(_lights.Values.Select(x => x.Serialize()));
+                    string serializedLights = JsonConvert.SerializeObject(_bulbs.Values.Select(x => x.Serialize()));
                     var sb = new StringBuilder().AppendLine();
-                    sb.Append($"|Failed to add Light. Already in dictionary: { _lights.ContainsKey(candidateIpAddress) }");
+                    sb.Append($"|Failed to add Light. Already in dictionary: { _bulbs.ContainsKey(candidateIpAddress) }");
                     sb.Append($"|CandidateIP: { candidateIpAddress } ");
-                    sb.Append($"|All Ips: {_lights.Keys.Select(x => string.Join(".", x.GetAddressBytes())) } ");
+                    sb.Append($"|All Ips: {_bulbs.Keys.Select(x => string.Join(".", x.GetAddressBytes())) } ");
                     sb.Append($"|All Lights: { serializedLights } { Environment.NewLine } ");
 
                     string errorMessage = sb.ToString();
@@ -186,27 +186,22 @@ namespace LifxCoreController
 
                 lock (lightsLock)
                 {
-                    if (state.HasValue && !_lights.ContainsKey(candidateIpAddress))
+                    if (state.HasValue && !_bulbs.ContainsKey(candidateIpAddress))
                     {
                         var bulbLogger = new LoggerConfiguration()
                         .WriteTo.File($"C:\\Logs\\LifxWebApi\\{ state.Value.Label.Value }.log", shared: true)
                         .CreateLogger();
 
-                        var lightBulb = new LightBulb(light, state.Value, bulbLogger);
-                        _lights.Add(candidateIpAddress, lightBulb);
-                        // Log
+                        var lightBulb = new Bulb(light, state.Value, bulbLogger);
+                        _bulbs.Add(candidateIpAddress, lightBulb);
+                        _logger.Information($"Added light { state.Value.Label.Value }, with IP: { string.Join('.', candidateIpAddress.GetAddressBytes()) }");
                     }
                     else
                     {
-                        // Log
+                        _logger.Information($"Already existing light: label: { state.Value.Label.Value }, with IP: { string.Join('.', candidateIpAddress.GetAddressBytes()) }");
                     }
                 }
             }
-            else
-            {
-                // Add log, already exists
-            }
-
         }
 
         private async Task<ILight> CreateLightMuffleExceptionAsync(LightFactory lightFactory, IPAddress candidateIpAddress, CancellationToken cancellationToken)
@@ -219,11 +214,19 @@ namespace LifxCoreController
 
                     cancellationToken.Register(cts.Cancel);
                     light = await lightFactory.CreateLightAsync(candidateIpAddress, cancellationToken);
-
+                    _logger.
+                        Information($".LifxDetector CreateLightMuffleExceptionAsync created bulb with IP: { string.Join('.', candidateIpAddress.GetAddressBytes()) }");
+                }
+                catch (OperationCanceledException ex)
+                {
+                    _logger.Warning($"LifxDetector CreateLightMuffleExceptionAsync Failed to create bulb with IP: { string.Join('.', candidateIpAddress.GetAddressBytes()) }.");
+                    light?.Dispose();
+                    light = null;
+                    cts.Cancel();
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warning($"Failed to create light with IP: { string.Join('.',candidateIpAddress.GetAddressBytes()) }. Ex: { ex } ");
+                    _logger.Warning($"LifxDetector CreateLightMuffleExceptionAsync Failed to create bulb with IP: { string.Join('.',candidateIpAddress.GetAddressBytes()) }. Ex: { ex } ");
                     light?.Dispose();
                     light = null;
                     cts.Cancel();
@@ -236,11 +239,11 @@ namespace LifxCoreController
         {
             lock (lightsLock)
             {
-                ILight savedLight = null;
-                if (_lights.ContainsKey(lightIp))
+                IBulb savedLight = null;
+                if (_bulbs.ContainsKey(lightIp))
                 {
-                    savedLight = _lights[lightIp];
-                    _lights.Remove(lightIp);
+                    savedLight = _bulbs[lightIp];
+                    _bulbs.Remove(lightIp);
                 }
                 savedLight?.Dispose();
             }
@@ -352,13 +355,13 @@ namespace LifxCoreController
 
         public virtual void Dispose()
         {
-            if (_lights.Any())
+            if (_bulbs.Any())
             {
-                foreach (ILight light in _lights.Values.Select(x => x.Light))
+                foreach (IBulb bulb in _bulbs.Values)
                 {
-                    light.Dispose();
+                    bulb.Dispose();
                 }
-                _lights.Clear();
+                _bulbs.Clear();
             }
         }
     }

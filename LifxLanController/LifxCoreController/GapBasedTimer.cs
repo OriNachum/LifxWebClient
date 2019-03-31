@@ -41,7 +41,7 @@ namespace LifxCoreController
 
         public void InitializeCallback(Func<Task> callback, TimeSpan sleepSpan)
         {
-            _logger?.Information("GapBasedTimer - InitializeCallbackAsync - calling action");
+            _logger?.Information("GapBasedTimer - InitializeCallback - calling action");
 
             ResetTimerProperties(callback, sleepSpan);
 
@@ -55,17 +55,17 @@ namespace LifxCoreController
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"GapBasedTimer - InitializeCallback - timerCallbackAsync throw an exception: { ex }");
+                    _logger.Error($"GapBasedTimer - InitializeCallback - timerCallbackAsync tried to raise callback and throw an exception: { ex }");
                     throw;
                 }
                 ScheduleTimerToRun(timerSleepSpan);
             }
 
-            _logger?.Information("GapBasedTimer - InitializeCallbackAsync - Running first time");
+            _logger?.Information("GapBasedTimer - InitializeCallback - Running first time");
 
             // Set Timer
             timer?.Dispose();
-            _logger?.Information("GapBasedTimer - InitializeCallbackAsync - wrapping action with timer");
+            _logger?.Information("GapBasedTimer - InitializeCallback - wrapping action with timer");
             timer = new Timer(async (state) => await timerCallBackWrapperAsync(state));
 
             _logger?.Information("GapBasedTimer - InitializeCallbackAsync - Scheduling timer for next run");

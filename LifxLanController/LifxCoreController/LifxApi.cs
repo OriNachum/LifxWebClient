@@ -15,7 +15,7 @@ namespace LifxCoreController
 {
     public class LifxApi : LifxDetector, ILifxApi, IDisposable
     {
-        public IEnumerable<IPAddress> LightsAddresses => Lights.Keys;
+        public IEnumerable<IPAddress> LightsAddresses => Bulbs.Keys;
 
         private readonly TimeSpan REFRESH_CYCLE_SLEEP_TIME = TimeSpan.FromMinutes(1);
         private DateTime? LastRefreshTime;
@@ -43,6 +43,18 @@ namespace LifxCoreController
             Task.Run(() => StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME));
         }
 
+        public async Task<(eLifxResponse response, string data, string bulb)> RefreshBulbAsync(string label)
+        {
+            var cts = new CancellationTokenSource();
+            Logger.Information($"LifxApi - RefreshBulbAsync started light: { label }; ");
+
+            IBulb lightBulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+            await lightBulb.GetStateAsync(cts.Token);
+
+            string bulb = lightBulb.Serialize();
+            return (eLifxResponse.Success, "", bulb);
+        }
+
         public async Task<(eLifxResponse response, string data)> RefreshBulbsAsync()
         {
             var cts = new CancellationTokenSource();
@@ -57,7 +69,7 @@ namespace LifxCoreController
                 await this.DetectLightsAsync(token);
 
                 LastRefreshTime = DateTime.Now;
-                string serializedLights = JsonConvert.SerializeObject(Lights.Values);
+                string serializedLights = JsonConvert.SerializeObject(Bulbs.Values);
                 return (eLifxResponse.Success, serializedLights);
             }
             catch (Exception ex)
@@ -94,9 +106,9 @@ namespace LifxCoreController
                 }
             }
 
-            if (Lights.ContainsKey(ip))
+            if (Bulbs.ContainsKey(ip))
             {
-                string light = JsonConvert.SerializeObject(Lights[ip]);
+                string light = JsonConvert.SerializeObject(Bulbs[ip]);
                 return (eLifxResponse.Success, light);
             }
 
@@ -113,7 +125,7 @@ namespace LifxCoreController
                     return (response, "Could not fetch bulbs");
                 }
             }
-            string bulbs = JsonConvert.SerializeObject(Lights.Values);
+            string bulbs = JsonConvert.SerializeObject(Bulbs.Values);
             return (eLifxResponse.Success, bulbs);
         }
 
@@ -127,7 +139,7 @@ namespace LifxCoreController
             try
             {
                 if (IsLightListObsolete() ||
-                    !Lights.Values.Where(x => x.Label == label).Any())
+                    !Bulbs.Values.Where(x => x.Label == label).Any())
                 {
                     Thread.Sleep(100);
                     var (response, message) = await RefreshBulbsAsync();
@@ -138,13 +150,13 @@ namespace LifxCoreController
                     }
                 }
 
-                LightBulb light = Lights.Values.SingleOrDefault(x => x.Label == label);
+                IBulb light = Bulbs.Values.SingleOrDefault(x => x.Label == label);
 
                 if (light == null)
                 {
                     return (eLifxResponse.BulbDoesntExist, "Couldn't locate bulb by label");
                 }
-                if (light.GetState().Power == Power.Off)
+                if (light.State.Power == Power.Off)
                 {
                     await light.OnAsync(); // Start developing a new Light, expose State, expose delay on light
                 }
@@ -166,38 +178,47 @@ namespace LifxCoreController
         {
             Logger.Information($"LifxApi - OnAsync started light: { label }; overtime? { overTime ?? 0 }");
 
-            LightBulb lightBulb = Lights.FirstOrDefault(x => x.Value.Label == label).Value;
-            /*if (overTime.HasValue)
-            {
-                return await lightBulb.OnOverTimeAsync(overTime.Value);
-            }
-            else
-            {*/
-                await lightBulb.OffAsync();
-                string bulb = lightBulb.Serialize();
-                return (eLifxResponse.Success, "", bulb);
-            //}
+            IBulb lightBulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+
+            await lightBulb.OffAsync();
+            string bulb = lightBulb.Serialize();
+            return (eLifxResponse.Success, "", bulb);
         }
 
         public async Task<(eLifxResponse response, string data, string bulb)> OnAsync(string label, int? overTime)
         {
             Logger.Information($"LifxApi - OnAsync started light: { label }; overtime? { overTime ?? 0 }");
 
-            LightBulb lightBulb = Lights.FirstOrDefault(x => x.Value.Label == label).Value;
+            IBulb lightBulb = Bulbs.FirstOrDefault(x => x.Value.Label == label).Value;
             await lightBulb.OnOverTimeAsync(overTime.HasValue ? overTime.Value : 0);
 
             string bulb = lightBulb.Serialize();
             return (eLifxResponse.Success, "", bulb);
         }
 
-        public async Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, LightBulbState state, long? fadeInDuration)
+        public async Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, IBulbState state, long? fadeInDuration)
         {
-            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; overtime? { fadeInDuration }");
+            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; state: { state }; overtime? { fadeInDuration }");
 
-            LightBulb lightBulb = Lights.FirstOrDefault(x => x.Value.Label == label).Value;
-            long fadeInDurationValue = fadeInDuration.HasValue ? fadeInDuration.Value : 0;
-            var (response, date, bulb) = await lightBulb.SetStateOverTimeAsync(state, fadeInDurationValue);
-            return (response, date, bulb);
+            try
+            {
+                IBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                if (bulb == null)
+                {
+                    Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");
+                    return (eLifxResponse.BulbDoesntExist, $"Could not find bulb by label { label }", "");
+                }
+
+                long fadeInDurationValue = fadeInDuration.HasValue ? fadeInDuration.Value : 0;
+                var (response, date, serializedBulb) = await bulb.SetStateOverTimeAsync(state, fadeInDurationValue);
+                return (response, date, serializedBulb);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"LifxApi - SetStateOverTimeAsync Got an exception when trying to change bulb: { label }; ex: { ex }");
+                return (eLifxResponse.ActionFailed, $"Failed on try to get bulb { label }, exception: { ex }", "");
+            }
+
         }
 
         private bool IsLightListObsolete()

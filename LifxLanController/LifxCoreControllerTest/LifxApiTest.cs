@@ -47,7 +47,7 @@ namespace LifxCoreControllerTest
             {
                 // Act
                 await server.DetectLightsAsync(cts.Token);
-                foreach (ILight light in server.Lights.Values)
+                foreach (ILight light in server.Bulbs.Values)
                 {
                     uint second = 1000;
                     uint minute = second * 60;
@@ -56,7 +56,7 @@ namespace LifxCoreControllerTest
                 }
 
                 // Assert
-                Assert.True(server.Lights.Count > 0);
+                Assert.True(server.Bulbs.Count > 0);
             }
         }
     }

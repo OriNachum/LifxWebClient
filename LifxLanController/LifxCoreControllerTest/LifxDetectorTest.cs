@@ -47,7 +47,7 @@ namespace LifxCoreControllerTest
                 await server.DetectLightsAsync(cancellationTokenSource.Token);
 
                 // Assert
-                Assert.True(server.Lights.Count() > 0);
+                Assert.True(server.Bulbs.Count() > 0);
             }
         }
     }

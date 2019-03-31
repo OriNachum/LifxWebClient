@@ -20,6 +20,8 @@ namespace LifxCoreController
 
         Task<(eLifxResponse response, string data)> RefreshBulbsAsync();
 
+        Task<(eLifxResponse response, string data, string bulb)> RefreshBulbAsync(string label);
+
         Task<(eLifxResponse response, string data)> RefreshBulbsAsync(CancellationToken token);
 
         Task<eLifxResponse> SetAutoRefreshAsync(TimeSpan cycle, CancellationToken token);
@@ -28,6 +30,6 @@ namespace LifxCoreController
         Task<(eLifxResponse response, string data)> ToggleLightAsync(string label);
         Task<(eLifxResponse response, string data, string bulb)> OnAsync(string label, int? fadeDuration);
         Task<(eLifxResponse response, string data, string bulb)> OffAsync(string label, int? fadeDuration);
-        Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, LightBulbState state, long? fadeInDuration);
+        Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, IBulbState state, long? fadeInDuration);
     }
 }

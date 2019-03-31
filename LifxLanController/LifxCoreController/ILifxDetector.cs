@@ -12,7 +12,7 @@ namespace LifxCoreController
 {
     public interface ILifxDetector : IDisposable
     {
-        IDictionary<IPAddress, LightBulb> Lights { get;  }
+        IDictionary<IPAddress, IBulb> Bulbs { get;  }
 
         Task DetectLightsAsync(CancellationToken cancellationToken);
     }
