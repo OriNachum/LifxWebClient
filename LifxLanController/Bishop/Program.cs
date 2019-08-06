@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Serilog;
 using Serilog.Core;
 
@@ -22,12 +23,12 @@ namespace Bishop
             }
         }
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             Logger.Information("Hello world!");
 
             var engine = new BishopEngine(actionProvider: null, Logger);
-            engine.Start();
+            await engine.Start();
         }
     }
 }

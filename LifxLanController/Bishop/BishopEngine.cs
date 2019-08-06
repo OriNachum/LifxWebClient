@@ -25,27 +25,27 @@ namespace Bishop
             _actionProvider = actionProvider;
         }
 
-        internal void Start()
+        internal async Task Start()
         {
-            Func<Task> GenerateNextCycleAction = () => new Task(NextCycleAction);
+            Func<Task> GenerateNextCycleAction = NextCycleAction;
             timer = new GapBasedTimer(GenerateNextCycleAction, SleepTime, _logger);
-
+            await NextCycleAction();
             // Loop queries database (Refresh) and asks for state
         }
 
 
-        private void NextCycleAction()
+        private async Task NextCycleAction()
         {
             IActionProvider actionProvider = _actionProvider ?? new ActionProvider();
-            (eNextActionResult result, Action action) = actionProvider.GetNextAction();
-            if (result == eNextActionResult.NoNextAction)
+            Func<Task> action = actionProvider.GetNextAction();
+            if (action == null)
             {
                 return;
             }
 
             try
             {
-                action();
+                await action();
                 actionProvider.SetCurrentActionState(eActionState.Success);
             }
             catch (Exception ex)

@@ -1,11 +1,12 @@
 ﻿using ProvidersInterface.Enums;
 using System;
+using System.Threading.Tasks;
 
 namespace ProvidersInterface
 {
     public interface IActionProvider
     {
-        (eNextActionResult result, Action action) GetNextAction();
+        Func<Task> GetNextAction();
 
         void SetCurrentActionState(eActionState success);
 
