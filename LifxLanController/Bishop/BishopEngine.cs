@@ -11,10 +11,10 @@ using ProvidersInterface.Enums;
 
 namespace Bishop
 {
-    public class BishopEngine : IDisposable
+    public class BishopEngine : IBishopEngine
     {
         ITimer timer;
-        private readonly TimeSpan SleepTime = TimeSpan.FromSeconds(1);
+        private readonly TimeSpan SleepTime = TimeSpan.FromSeconds(5);
         ILogger _logger;
         IActionProvider _actionProvider;
 
@@ -22,21 +22,22 @@ namespace Bishop
         public BishopEngine(IActionProvider actionProvider, ILogger logger)
         {
             _logger = logger;
-            _actionProvider = actionProvider;
+            _actionProvider = actionProvider ?? new ActionProvider();
         }
 
-        internal async Task Start()
+        public void Start()
         {
             Func<Task> GenerateNextCycleAction = NextCycleAction;
             timer = new GapBasedTimer(GenerateNextCycleAction, SleepTime, _logger);
-            await NextCycleAction();
+            timer.InitializeCallback(GenerateNextCycleAction, SleepTime);
+            // wait NextCycleAction();
             // Loop queries database (Refresh) and asks for state
         }
 
 
         private async Task NextCycleAction()
         {
-            IActionProvider actionProvider = _actionProvider ?? new ActionProvider();
+            IActionProvider actionProvider = _actionProvider;
             Func<Task> action = actionProvider.GetNextAction();
             if (action == null)
             {

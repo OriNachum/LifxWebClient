@@ -23,12 +23,19 @@ namespace Bishop
             }
         }
 
-        static async Task Main(string[] args)
+        public static void Main(string[] args)
         {
-            Logger.Information("Hello world!");
+            Logger.Information("Test Program for bishop started!");
 
-            var engine = new BishopEngine(actionProvider: null, Logger);
-            await engine.Start();
+            using (IBishopEngine engine = new BishopEngine(actionProvider: null, Logger))
+            {
+                engine.Start();
+
+                Console.WriteLine("Press any key to close service");
+                Console.ReadKey();
+            }
+
+            Logger.Information("Test Program for bishop ended!");
         }
     }
 }

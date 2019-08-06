@@ -47,7 +47,7 @@ namespace ProvidersInterface.Impl
                 { "setLabel", $"{ActiveSite}Lifx/Api/Label" },
                 { "setPower", $"{ActiveSite}Lifx/Api/Power" },
                 { "setTemperature", $"{ActiveSite}Lifx/Api/Temperature" },
-                { " fadeToState", $"{ActiveSite}Lifx/Api/FadeToState" },
+                { "fadeToState", $"{ActiveSite}Lifx/Api/FadeToState" },
             };
         }
 
