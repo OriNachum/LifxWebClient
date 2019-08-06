@@ -253,7 +253,7 @@ namespace LifxCoreController
         {
             int port = 56700;
             var neighbourIps = new List<IPAddress>();
-            byte[] ipBase = new byte[4] { 192, 168, 1, 1 };
+            byte[] ipBase = new byte[4] { 10, 0, 0, 1 }; //{ 192, 168, 1, 1 };
 
             /*using (var pinger = new TcpClient())
             {
@@ -304,13 +304,13 @@ namespace LifxCoreController
             var neighbourIps = new List<IPAddress>();
 
             var pinger = new Ping();
-            PingReply rep = await pinger.SendPingAsync("192.168.1.1");
+            PingReply rep = await pinger.SendPingAsync("10.0.0.1");
             if (rep.Status == IPStatus.Success)
             {
                 //host is active
             }
 
-            string ipBase = "192.168.1.";
+            string ipBase = "10.0.0."; //"192.168.1.";
             string dhcpServerIp = ipBase + "1";
             
             PingReply basePingReply = null;

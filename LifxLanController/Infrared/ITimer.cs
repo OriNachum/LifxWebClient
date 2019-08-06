@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace LifxCoreController
+namespace Infrared
 {
-    interface ITimer : IDisposable
+    public interface ITimer : IDisposable
     {
 
         /// <summary>
         /// Initializes timer's callback action and sleepSpan.
         /// Upon initialization, callback is ran once
         /// </summary>
-        /// <param name="callback"></param>
-        /// <param name="sleepSpan"></param>
+        /// <param name="callback">A function that creates a task to run in background</param>
+        /// <param name="sleepSpan">Time to sleep since last run's finish time</param>
         void InitializeCallback(Func<Task> callback, TimeSpan sleepSpan);
 
         /// <summary>

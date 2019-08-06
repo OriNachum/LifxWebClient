@@ -1,11 +1,9 @@
 ﻿using Serilog;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LifxCoreController
+namespace Infrared.Impl
 {
     /// <summary>
     /// A timer that instead of running tasks by an interval, keeps a certain gap between tasks. 
@@ -14,8 +12,7 @@ namespace LifxCoreController
     public class GapBasedTimer : ITimer
     {
         private readonly TimeSpan NEVER = TimeSpan.FromMilliseconds(-1);
-
-        Timer timer = null;
+        private Timer timer = null;
         TimeSpan timerSleepSpan;
         Func<Task> timerCallbackAsync;
         private ILogger _logger;
@@ -92,7 +89,7 @@ namespace LifxCoreController
         
         void ScheduleTimerToRun(TimeSpan timerSleepSpanForNextRun)
         {
-            _logger?.Information("GapBasedTimer - ScheduleTimerToRun");
+            _logger?.Information($"GapBasedTimer - ScheduleTimerToRun time for next run: {timerSleepSpanForNextRun}");
             timer.Change(timerSleepSpanForNextRun, NEVER);
         }
 

@@ -1,4 +1,6 @@
-﻿using Lifx;
+﻿using Infrared;
+using Infrared.Impl;
+using Lifx;
 using Newtonsoft.Json;
 using Serilog;
 using Serilog.Core;
@@ -20,7 +22,7 @@ namespace LifxCoreController.Lightbulb
         object actionQueueLock = new object();
         private async Task CheckActionQueueAsync()
         {
-            Logger.Information($"LifxBulb - CheckActionQueue - { actionQueue.Count() } items in action queue");
+            Logger.Information($"LifxBulb - CheckActionQueueAsync - { actionQueue.Count() } items in action queue");
             if (actionQueue.Any() && actionQueue.TryTake(out Func<Task> unqueuedAction))
             {
                 try
@@ -100,24 +102,7 @@ namespace LifxCoreController.Lightbulb
             IBulbState startState = initialState.Copy();
 
             DateTime setStateStartTime = DateTime.UtcNow;
-            Func<IBulbState> GetNextState = () =>
-            {
-                Logger.Information($"LifxBulb - GetNextState - Calculating next state, base step is { singleStepStateProgression }");
-
-                double durationSinceStart = (DateTime.UtcNow - setStateStartTime).TotalMilliseconds;
-                Logger.Information($"LifxBulb - GetNextState - time passed since start: { durationSinceStart }ms");
-
-                double factor = durationSinceStart / stateStepAccuracy;
-                Logger.Information($"LifxBulb - GetNextState - factor to multiply: { factor }ms");
-
-                IBulbState stateDifference = BulbState.MultiplyState(singleStepStateProgression, factor, enforceLimits: false);
-                Logger.Information($"LifxBulb - GetNextState - add : { stateDifference } to start state { startState }");
-
-                IBulbState newStateToSet = BulbState.AddStates(startState, stateDifference, enforceLimits: true);
-                Logger.Information($"LifxBulb - GetNextState - new state should be: { newStateToSet }");
-
-                return newStateToSet;
-            };
+            Func<IBulbState> GetNextState = GetGetNextStateFunction(stateStepAccuracy, singleStepStateProgression, startState, setStateStartTime);
 
             DateTime endTime = setStateStartTime.AddMilliseconds(fadeInDuration);
             Logger.Information($"LifxBulb - OnOverTimeAsync - Enqueuing action to run");
@@ -128,6 +113,28 @@ namespace LifxCoreController.Lightbulb
             actionRunner.Reset(WorkingPeriod);
 
             return (eLifxResponse.Success, "Success", this.Serialize());
+        }
+
+        private Func<IBulbState> GetGetNextStateFunction(int stateStepAccuracy, IBulbState singleStepStateProgression, IBulbState startState, DateTime setStateStartTime)
+        {
+            return () =>
+            {
+                Logger.Information($"LifxBulb - SetStateOverTimeAsync - GetNextState - Calculating next state, base step is { singleStepStateProgression }");
+
+                double durationSinceStart = (DateTime.UtcNow - setStateStartTime).TotalMilliseconds;
+                Logger.Information($"LifxBulb - SetStateOverTimeAsync - GetNextState - time passed since start: { durationSinceStart }ms");
+
+                double factor = durationSinceStart / stateStepAccuracy;
+                Logger.Information($"LifxBulb - SetStateOverTimeAsync - GetNextState - factor to multiply: { factor }ms");
+
+                IBulbState stateDifference = BulbState.MultiplyState(singleStepStateProgression, factor, enforceLimits: false);
+                Logger.Information($"LifxBulb - SetStateOverTimeAsync - GetNextState - add : { stateDifference } to start state { startState }");
+
+                IBulbState newStateToSet = BulbState.AddStates(startState, stateDifference, enforceLimits: true);
+                Logger.Information($"LifxBulb - SetStateOverTimeAsync - GetNextState - new state should be: { newStateToSet }");
+
+                return newStateToSet;
+            };
         }
 
         private IBulbState CalculateSingleStateStep(long overtime, IBulbState initialState, IBulbState endState)
@@ -148,33 +155,49 @@ namespace LifxCoreController.Lightbulb
             return singleStepState;
         }
 
-        private async Task<LightState> SetStateAsync(IBulbState state)
+        private async Task<LightState> SetStateAsync(IBulbState newState)
         {
-            await this.GetStateAsync();
-            LightState lastVerifiedState = this.LastVerifiedState.Value;
-            if (state.Power.HasValue && this.State.Power != state.Power)
+            Logger.Debug($"LifxBulb - SetStateAsync - Getting state { newState }");
+
+            LightState lastVerifiedState = await this.GetStateAsync();
+            if (this.LastVerifiedState.HasValue)
             {
-                await this.SetPowerAsync(state.Power.Value);
+                lastVerifiedState = this.LastVerifiedState.Value;
             }
 
-            if (state.Brightness.HasValue && this.State.Brightness != state.Brightness)
+            Logger.Debug($"LifxBulb - SetStateAsync - Setting power {this.State.Power}");
+            if (newState.Power.HasValue && this.State.Power != newState.Power)
             {
-                await this.SetBrightnessAsync(state.Brightness.Value);
+                await this.SetPowerAsync(newState.Power.Value);
             }
 
-            if ((state.Hue.HasValue && this.State.Hue != state.Hue) ||
-                (state.Saturation.HasValue && this.State.Saturation != state.Saturation))
+            Logger.Debug($"LifxBulb - SetStateAsync - Setting brightness {this.State.Brightness}");
+            if (newState.Brightness.HasValue && this.State.Brightness != newState.Brightness)
             {
-                var color = new Color(state.Hue.Value, state.Saturation.Value);
+                await this.SetBrightnessAsync(newState.Brightness.Value);
+            }
+
+            Logger.Debug($"LifxBulb - SetStateAsync - Setting hue {this.State.Hue} and saturation {this.State.Saturation}");
+            if ((newState.Hue.HasValue && this.State.Hue != newState.Hue) ||
+                (newState.Saturation.HasValue && this.State.Saturation != newState.Saturation))
+            {
+
+                Hue hue = new Hue(newState.Hue.HasValue ? newState.Hue.Value : this.State.Hue.Value);
+                Percentage saturation = new Percentage(newState.Saturation.HasValue ? newState.Saturation.Value : this.State.Saturation.Value);
+                var color = new Color(hue, saturation);
                 await this.SetColorAsync(color);
             }
 
-            if (state.Temperature.HasValue && this.State.Temperature != state.Temperature)
+            Logger.Debug($"LifxBulb - SetStateAsync - Setting temperature {this.State.Temperature}");
+            if (newState.Temperature.HasValue && this.State.Temperature != newState.Temperature)
             {
-                await this.SetTemperatureAsync(state.Temperature.Value);
+                await this.SetTemperatureAsync(newState.Temperature.Value);
             }
-            lastVerifiedState = this.LastVerifiedState ?? this.LastVerifiedState.Value;
 
+            if (this.LastVerifiedState.HasValue)
+            {
+                lastVerifiedState = this.LastVerifiedState.Value;
+            }
             return lastVerifiedState;
         }
 

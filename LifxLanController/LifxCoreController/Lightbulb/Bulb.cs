@@ -83,8 +83,8 @@ namespace LifxCoreController.Lightbulb
                 if (_logger == null && !string.IsNullOrEmpty(Label))
                 {
                     _logger = new LoggerConfiguration()
-                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\{ Label }.log", shared: true)
-                    .CreateLogger();
+                        .WriteTo.File($"C:\\Logs\\LifxWebApi\\{ Label }.log", shared: true)
+                        .CreateLogger();
                 }
                 return _logger;
             }
