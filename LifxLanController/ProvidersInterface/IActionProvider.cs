@@ -6,7 +6,7 @@ namespace ProvidersInterface
 {
     public interface IActionProvider
     {
-        Func<Task> GetNextAction();
+        Func<Task<string>> GetNextAction();
 
         void SetCurrentActionState(eActionState success);
 

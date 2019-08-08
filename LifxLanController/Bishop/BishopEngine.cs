@@ -22,7 +22,7 @@ namespace Bishop
         public BishopEngine(IActionProvider actionProvider, ILogger logger)
         {
             _logger = logger;
-            _actionProvider = actionProvider ?? new ActionProvider();
+            _actionProvider = actionProvider ?? new ActionProvider(_logger);
         }
 
         public void Start()
@@ -38,15 +38,18 @@ namespace Bishop
         private async Task NextCycleAction()
         {
             IActionProvider actionProvider = _actionProvider;
-            Func<Task> action = actionProvider.GetNextAction();
+            Func<Task<string>> action = actionProvider.GetNextAction();
             if (action == null)
             {
                 return;
             }
 
+
             try
             {
-                await action();
+                _logger.Information("BishopEngine - NextCycleAction - Found an action to perform.. starting");
+                string response = await action();
+                _logger.Information($"BishopEngine - NextCycleAction - Completed. Response: {response}");
                 actionProvider.SetCurrentActionState(eActionState.Success);
             }
             catch (Exception ex)

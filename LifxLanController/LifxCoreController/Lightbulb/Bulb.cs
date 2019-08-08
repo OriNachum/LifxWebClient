@@ -153,13 +153,21 @@ namespace LifxCoreController.Lightbulb
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.GetState, cts))
                 {
-                    LightState newState = await this.Light.GetStateAsync(cts.Token);
+                    try
+                    {
+                        LightState newState = await this.Light.GetStateAsync(cts.Token);
 
-                    // Thread.Sleep(100); ? 
-                    this.LastVerifiedState = newState;
-                    this.StateVerificationTimeUtc = DateTime.UtcNow;
-                    Logger.Information($"LifxBulb - state refreshed: { this.State }");
-                    return newState;
+                        // Thread.Sleep(100); ? 
+                        this.LastVerifiedState = newState;
+                        this.StateVerificationTimeUtc = DateTime.UtcNow;
+                        Logger.Information($"LifxBulb - state refreshed: { this.State }");
+                        return newState;
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        Logger.Error($"LifxBulb - GetStatAsync - operation was canceled. Last verified state: { this.LastVerifiedState }");
+                        return this.LastVerifiedState.HasValue ? this.LastVerifiedState.Value : new LightState();
+                    }
                 }
             }
         }

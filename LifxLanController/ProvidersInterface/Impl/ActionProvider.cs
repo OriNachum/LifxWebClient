@@ -8,6 +8,10 @@ using System.IO;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.DependencyInjection;
 using System.Threading.Tasks;
+using LifxCoreController.Lightbulb;
+using Newtonsoft.Json;
+using System.Linq;
+using Serilog;
 
 namespace ProvidersInterface.Impl
 {
@@ -30,9 +34,19 @@ namespace ProvidersInterface.Impl
         }
 
         IDictionary<string, string> Urls;
+        IDictionary<ActionSchedule, bool> ActionsSchedule;
+        IDictionary<string, ActionDefinition> ActionsDefinitions;
 
-        public ActionProvider()
+        IHttpClientFactory HttpClientFactory;
+        ILogger Logger;
+
+        public ActionProvider(ILogger logger, IHttpClientFactory httpClientFactory = null)
         {
+            this.Logger = logger;
+
+            IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
+            this.HttpClientFactory = httpClientFactory ?? serviceProvider.GetService<IHttpClientFactory>();
+
             Urls = new Dictionary<string, string>
             {
                 { "getBulbs", $"{ActiveSite}Lifx/Api/GetBulbs" },
@@ -49,20 +63,108 @@ namespace ProvidersInterface.Impl
                 { "setTemperature", $"{ActiveSite}Lifx/Api/Temperature" },
                 { "fadeToState", $"{ActiveSite}Lifx/Api/FadeToState" },
             };
+
+            string actionStartWakeupName = "Wakeup";
+            string actionStartFadeInName = "FadeIn";
+
+            var actionDayTime = new DateTime(2000, 1, 1, hour: 7, minute: 30, second: 00);
+            var actionWeekendTime = new DateTime(2000, 1, 1, hour: 9, minute: 30, second: 00);
+
+            InitializeActionsDefinitions(actionStartWakeupName, actionStartFadeInName);
+
+            this.ActionsSchedule = new Dictionary<ActionSchedule, bool>();
+            InitializeActionsSchedule(actionStartWakeupName, actionDayTime.AddMinutes(-5), actionWeekendTime.AddMinutes(-5));
+            InitializeActionsSchedule(actionStartFadeInName, actionDayTime, actionWeekendTime);
         }
 
-        public Func<Task> GetNextAction()
+        private void InitializeActionsDefinitions(string actionStartWakeupName, string actionStartFadeInName)
         {
-            return async () =>
+            var bulbState = new BulbState
             {
-                IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
-                IHttpClientFactory httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
-                using (var client = httpClientFactory.CreateClient())
+                Brightness = 1,
+                Temperature = 3550,
+                Power = Lifx.Power.On,
+                Saturation = 0,
+                Hue = 0,
+            };
+            var serializedBulbState = JsonConvert.SerializeObject(bulbState);
+
+            this.ActionsDefinitions = new Dictionary<string, ActionDefinition>
+            {
                 {
-                    var uri = new Uri(string.Concat(Urls["toggleBulb"], "?label=Television")); // ?date=today add that aas constant value for starters
-                    var reseponse = await client.GetAsync(uri);
+                    actionStartWakeupName, new ActionDefinition
+                    {
+                        Url = "getBulbs",
+                    }
+                },
+                {
+                    actionStartFadeInName, new ActionDefinition
+                    {
+                        Url = "fadeToState",
+                        Params = $"?label={"Bedroom"}&serializedState={serializedBulbState}&fadeInDuration={900000}",
+                    }
+                },
+            };
+        }
+
+        private void InitializeActionsSchedule(string actionStartFadeInName, DateTime actionDayTime, DateTime actionWeekendTime)
+        {
+            foreach (DayOfWeek dayOfWeek in Enum.GetValues(typeof(DayOfWeek)))
+            {
+                var actionSchedule = new ActionSchedule
+                {
+                    Day = dayOfWeek,
+                    Time = actionDayTime,
+                    ActionName = actionStartFadeInName,
+                };
+                if (dayOfWeek == DayOfWeek.Friday || dayOfWeek == DayOfWeek.Saturday)
+                {
+                    actionSchedule.Time = actionWeekendTime;
+                }
+                this.ActionsSchedule.Add(actionSchedule, true);
+            }
+        }
+
+        public Func<Task<string>> GetNextAction()
+        {
+            ActionSchedule actionSchedule = this.ActionsSchedule
+                .Where(x => x.Value)
+                .Where(x => x.Key.Day == DateTime.Now.DayOfWeek)
+                .Where(x => x.Key.Time.TimeOfDay <= DateTime.Now.TimeOfDay)
+                .Where(x => x.Key.Time.AddMinutes(30).TimeOfDay > DateTime.Now.TimeOfDay)
+                .Select(x => x.Key)
+                .FirstOrDefault();
+            if (actionSchedule == null || !this.ActionsDefinitions.ContainsKey(actionSchedule.ActionName))
+            {
+                return null;
+            }
+
+            this.Logger.Information("ActionProvider - GetNextAction - Found an action model to perform");
+            this.ActionsSchedule[actionSchedule] = false;
+
+            ActionDefinition actionDefinition = this.ActionsDefinitions[actionSchedule.ActionName];
+
+            this.Logger.Information("ActionProvider - GetNextAction - Generating action");
+            Func<Task<string>> nextAction = GenerateActionFromScheduleModel(actionDefinition);
+
+            return nextAction;
+        }
+
+        private Func<Task<string>> GenerateActionFromScheduleModel(ActionDefinition actionSchedule)
+        {
+            Func<Task<string>> nextAction = async () =>
+            {
+                this.Logger.Information("ActionProvider - GenerateActionFromScheduleModel - nextAction - Generated Action started");
+                using (var client = this.HttpClientFactory.CreateClient())
+                {
+                    var uri = new Uri(string.Concat(this.Urls[actionSchedule.Url], actionSchedule.Params)); // ?date=today add that aas constant value for starters
+                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url request: {uri}");
+                    var response = await client.GetAsync(uri);
+                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url response: {response}");
+                    return response.ToString();
                 }
             };
+            return nextAction;
         }
 
         public void SetCurrentActionState(eActionState success)
