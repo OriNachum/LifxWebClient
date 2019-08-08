@@ -8,5 +8,10 @@ namespace ProvidersInterface
     {
         public string Url { get; set; }
         public string Params { get; set; }
+
+        public override string ToString()
+        {
+            return $"Url: {Url}, Params: {Params}";
+        }
     }
 }

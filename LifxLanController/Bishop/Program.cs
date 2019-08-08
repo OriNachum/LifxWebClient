@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Net.Http;
 using System.Threading.Tasks;
+using ActionService.Logic;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Core;
 
@@ -27,7 +30,11 @@ namespace Bishop
         {
             Logger.Information("Test Program for bishop started!");
 
-            using (IBishopEngine engine = new BishopEngine(actionProvider: null, Logger))
+            IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
+            IHttpClientFactory httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
+            var actionProvider = new ActionProvider(httpClientFactory, Logger);
+
+            using (IBishopEngine engine = new BishopEngine(actionProvider, httpClientFactory, Logger))
             {
                 engine.Start();
 

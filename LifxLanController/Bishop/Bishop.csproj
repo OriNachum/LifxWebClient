@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ActionService\ActionService.csproj" />
     <ProjectReference Include="..\Infrared\Infrared.csproj" />
     <ProjectReference Include="..\ProvidersInterface\ProvidersInterface.csproj" />
   </ItemGroup>

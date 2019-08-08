@@ -1,4 +1,5 @@
 ﻿using ProvidersInterface.Enums;
+using ProvidersInterface.Models;
 using System;
 using System.Threading.Tasks;
 
@@ -6,12 +7,12 @@ namespace ProvidersInterface
 {
     public interface IActionProvider
     {
-        Func<Task<string>> GetNextAction();
+        ActionModel GetNextScheduledAction();
 
         void SetCurrentActionState(eActionState success);
 
         void QueueState(Action action);
 
-        void ScheduleAction(Action action, ActionSchedule actionSchedule);
+        void ScheduleAction(Action action, ActionScheduleModel actionSchedule);
     }
 }

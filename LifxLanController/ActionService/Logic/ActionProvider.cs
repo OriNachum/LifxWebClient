@@ -12,8 +12,10 @@ using LifxCoreController.Lightbulb;
 using Newtonsoft.Json;
 using System.Linq;
 using Serilog;
+using ProvidersInterface;
+using ProvidersInterface.Models;
 
-namespace ProvidersInterface.Impl
+namespace ActionService.Logic
 {
     public class ActionProvider : IActionProvider
     {
@@ -40,12 +42,10 @@ namespace ProvidersInterface.Impl
         IHttpClientFactory HttpClientFactory;
         ILogger Logger;
 
-        public ActionProvider(ILogger logger, IHttpClientFactory httpClientFactory = null)
+        public ActionProvider(IHttpClientFactory httpClientFactory, ILogger logger)
         {
             this.Logger = logger;
-
-            IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
-            this.HttpClientFactory = httpClientFactory ?? serviceProvider.GetService<IHttpClientFactory>();
+            this.HttpClientFactory = httpClientFactory;
 
             Urls = new Dictionary<string, string>
             {
@@ -125,7 +125,7 @@ namespace ProvidersInterface.Impl
             }
         }
 
-        public Func<Task<string>> GetNextAction()
+        public ActionModel GetNextScheduledAction()
         {
             ActionSchedule actionSchedule = this.ActionsSchedule
                 .Where(x => x.Value)
@@ -144,27 +144,16 @@ namespace ProvidersInterface.Impl
 
             ActionDefinition actionDefinition = this.ActionsDefinitions[actionSchedule.ActionName];
 
-            this.Logger.Information("ActionProvider - GetNextAction - Generating action");
-            Func<Task<string>> nextAction = GenerateActionFromScheduleModel(actionDefinition);
-
-            return nextAction;
-        }
-
-        private Func<Task<string>> GenerateActionFromScheduleModel(ActionDefinition actionSchedule)
-        {
-            Func<Task<string>> nextAction = async () =>
+            var actionModel = new ActionModel
             {
-                this.Logger.Information("ActionProvider - GenerateActionFromScheduleModel - nextAction - Generated Action started");
-                using (var client = this.HttpClientFactory.CreateClient())
-                {
-                    var uri = new Uri(string.Concat(this.Urls[actionSchedule.Url], actionSchedule.Params)); // ?date=today add that aas constant value for starters
-                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url request: {uri}");
-                    var response = await client.GetAsync(uri);
-                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url response: {response}");
-                    return response.ToString();
-                }
+                FullUrl = string.Concat(this.Urls[actionDefinition.Url], actionDefinition.Params),
             };
-            return nextAction;
+            return actionModel;
+
+            // this.Logger.Information("ActionProvider - GetNextAction - Generating action");
+            // Func<Task<string>> nextAction = GenerateActionFromScheduleModel(actionDefinition);
+
+            // return nextAction;
         }
 
         public void SetCurrentActionState(eActionState success)
@@ -178,6 +167,11 @@ namespace ProvidersInterface.Impl
         }
 
         public void ScheduleAction(Action action, ActionSchedule actionSchedule)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ScheduleAction(Action action, ActionScheduleModel actionSchedule)
         {
             throw new NotImplementedException();
         }
