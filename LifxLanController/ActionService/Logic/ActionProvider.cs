@@ -14,53 +14,26 @@ using System.Linq;
 using Serilog;
 using ProvidersInterface;
 using ProvidersInterface.Models;
+using Infrared;
+using Infrared.Enums;
 
 namespace ActionService.Logic
 {
     public class ActionProvider : IActionProvider
     {
-        const string Hostname = "ori";
-
-        readonly IDictionary<string, string> Sites = new Dictionary<string, string> {
-            { "dev", $"https://{Hostname}:44370/" },
-            { "devIisDebug", $"https://{Hostname}:5001/"},
-            { "devIis",  $"https://{Hostname}/LifxWebApi/"},
-        };
-
-        string ActiveSite
-        {
-            get
-            {
-                return Sites["devIis"];
-            }
-        }
-
-        IDictionary<string, string> Urls;
         IDictionary<ActionSchedule, bool> ActionsSchedule;
         IDictionary<string, ActionDefinition> ActionsDefinitions;
 
-        ILogger Logger;
+        private ILogger Logger { get; }
 
-        public ActionProvider(ILogger logger)
+        private IServiceUrlProvider ServiceUrlProvider { get; }
+
+        public ActionProvider(ILogger logger, IServiceUrlProvider serviceUrlProvider)
         {
             this.Logger = logger;
+            this.Logger.Information("ActionProvider started");
 
-            Urls = new Dictionary<string, string>
-            {
-                { "getBulbs", $"{ActiveSite}Lifx/Api/GetBulbs" },
-                { "reset", $"{ActiveSite}Lifx/Api/Reset" },
-                { "toggleBulb", $"{ActiveSite}Lifx/Api/Toggle" },
-                { "refreshBulbs", $"{ActiveSite}Lifx/Api/Refresh" },
-                { "refreshBulb", $"{ActiveSite}Lifx/Api/RefreshBulb" },
-                { "off", $"{ActiveSite}Lifx/Api/Off" },
-                { "on", $"{ActiveSite}Lifx/Api/On" },
-                { "setBrightness", $"{ActiveSite}Lifx/Api/Brightness" },
-                { "setColor", $"{ActiveSite}Lifx/Api/Color" },
-                { "setLabel", $"{ActiveSite}Lifx/Api/Label" },
-                { "setPower", $"{ActiveSite}Lifx/Api/Power" },
-                { "setTemperature", $"{ActiveSite}Lifx/Api/Temperature" },
-                { "fadeToState", $"{ActiveSite}Lifx/Api/FadeToState" },
-            };
+            this.ServiceUrlProvider = serviceUrlProvider;
 
             string actionStartWakeupName = "Wakeup";
             string actionStartFadeInName = "FadeIn";
@@ -77,12 +50,12 @@ namespace ActionService.Logic
             string testAction = "TestAction";
             DayOfWeek? dayOfweek = DayOfWeek.Friday;
             DateTime timeToRun = new DateTime(2000, 1, 1, hour: 19, minute: 20, second: 00);
-            string urlToRun = "getBulbs";
+            var urlCodeToRun = eLifxWebApi.GetBulbs;
             string paramsForUrl = null;
-            AddActionToSchedule(testAction, dayOfweek, timeToRun, urlToRun, paramsForUrl);
+            AddActionToSchedule(testAction, dayOfweek, timeToRun, urlCodeToRun, paramsForUrl);
         }
 
-        private void AddActionToSchedule(string testAction, DayOfWeek? dayOfweek, DateTime timeToRun, string urlToRun, string paramsForUrl)
+        private void AddActionToSchedule(string testAction, DayOfWeek? dayOfweek, DateTime timeToRun, Enum urlCodeToRun, string paramsForUrl)
         {
             this.ActionsSchedule.Add(new ActionSchedule
             {
@@ -92,7 +65,7 @@ namespace ActionService.Logic
             }, true);
             this.ActionsDefinitions.Add(testAction, new ActionDefinition
             {
-                Url = urlToRun,
+                Url = urlCodeToRun,
                 Params = paramsForUrl,
             });
         }
@@ -114,13 +87,13 @@ namespace ActionService.Logic
                 {
                     actionStartWakeupName, new ActionDefinition
                     {
-                        Url = "getBulbs",
+                        Url = eLifxWebApi.GetBulbs,
                     }
                 },
                 {
                     actionStartFadeInName, new ActionDefinition
                     {
-                        Url = "fadeToState",
+                        Url = eLifxWebApi.FadeToState,
                         Params = $"?label={"Bedroom"}&serializedState={serializedBulbState}&fadeInDuration={900000}",
                     }
                 },
@@ -163,10 +136,11 @@ namespace ActionService.Logic
             this.ActionsSchedule[actionSchedule] = false;
 
             ActionDefinition actionDefinition = this.ActionsDefinitions[actionSchedule.ActionName];
+            string url = this.ServiceUrlProvider.GetUrl(eService.LifxWebApi, actionDefinition.Url);
 
             var actionModel = new ActionModel
             {
-                FullUrl = string.Concat(this.Urls[actionDefinition.Url], actionDefinition.Params),
+                FullUrl = string.Concat(url, actionDefinition.Params),
             };
             return actionModel;
 

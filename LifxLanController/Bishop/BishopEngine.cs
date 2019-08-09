@@ -11,6 +11,7 @@ using ActionService.Logic;
 using ProvidersInterface.Models;
 using System.Net.Http;
 using Newtonsoft.Json;
+using Infrared.Enums;
 
 namespace Bishop
 {
@@ -19,17 +20,23 @@ namespace Bishop
         ITimer timer;
         private readonly TimeSpan SleepTime = TimeSpan.FromSeconds(5);
         ILogger Logger;
-        IHttpClientFactory HttpClientFactory;
-        string GetNextActionUrl = "https://ori/ActionService/api/Action";
-            // "https://localhost:44306/api/Action/GetNextAction";
-            //$"https://ori/ActionService/api/Action/GetNextAction"; 
-            // https://ori:444/ActionService/api/Action/GetNextAction
 
-        public BishopEngine(IHttpClientFactory httpClientFactory, ILogger logger)
+        public IServiceUrlProvider ServiceUrlProvider { get; }
+
+        IHttpClientFactory HttpClientFactory;
+        string GetNextActionUrl
+        {
+            get
+            {
+                return this.ServiceUrlProvider.GetUrl(eService.ActionService, eActionServiceUrl.GetNext);
+            }
+        }
+
+        public BishopEngine(IHttpClientFactory httpClientFactory, ILogger logger, IServiceUrlProvider serviceUrlProvider)
         {
             this.HttpClientFactory = httpClientFactory;
-
-            Logger = logger;
+            this.Logger = logger;
+            this.ServiceUrlProvider = serviceUrlProvider;
         }
 
         public void Start()

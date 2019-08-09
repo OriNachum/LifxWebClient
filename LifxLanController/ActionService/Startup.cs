@@ -4,6 +4,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using ActionService.Logic;
+using Infrared;
+using Infrared.Impl;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -35,6 +37,7 @@ namespace ActionService
             //services.AddSingleton<IHttpContextFactory, httpClientFactory>();
             services.AddHttpClient();
             services.AddSingleton<ILogger, ActionServiceLogger>();
+            services.AddSingleton<IServiceUrlProvider, ServiceUrlProvider>();
             services.AddSingleton<IActionProvider, ActionProvider>();
             services.Configure<ActionProvider>(Configuration);
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);

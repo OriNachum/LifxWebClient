@@ -6,12 +6,12 @@ namespace ProvidersInterface
 {
     public class ActionDefinition
     {
-        public string Url { get; set; }
+        public Enum Url { get; set; }
         public string Params { get; set; }
 
         public override string ToString()
         {
-            return $"Url: {Url}, Params: {Params}";
+            return $"Url: {Url.ToString()}, Params: {Params}";
         }
     }
 }

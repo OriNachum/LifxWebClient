@@ -2,6 +2,7 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 using ActionService.Logic;
+using Infrared.Impl;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Core;
@@ -33,7 +34,9 @@ namespace Bishop
             IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
             IHttpClientFactory httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
 
-            using (IBishopEngine engine = new BishopEngine(httpClientFactory, Logger))
+            var serviceUrlProvider = new ServiceUrlProvider(Logger);
+
+            using (IBishopEngine engine = new BishopEngine(httpClientFactory, Logger, serviceUrlProvider))
             {
                 engine.Start();
 

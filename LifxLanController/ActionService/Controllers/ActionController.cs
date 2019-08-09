@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ActionService.Logic;
+using Infrared;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using ProvidersInterface;
@@ -15,20 +16,30 @@ namespace ActionService.Controllers
     [ApiController]
     public class ActionController : ControllerBase
     {
-        IActionProvider ActionProvider;
+        private IActionProvider ActionProvider { get; }
+        private ILogger Logger { get; }
 
-        public ILogger Logger { get; set; }
-
-        public ActionController([FromServices] IActionProvider actionProvider, ILogger logger)
+        public ActionController([FromServices] IActionProvider actionProvider, [FromServices] ILogger logger)
         {
             this.Logger = logger;
             this.Logger.Information("ActionController started");
             this.ActionProvider = actionProvider;
         }
 
-        // api/Action/GetNextAction
-        [HttpGet]
-        public ActionResult<string> GetNextAction()
+        // api/Action/GetNext
+        [HttpGet("GetNext")]
+        public ActionResult<string> GetNext()
+        {
+            Logger.Information("ActionController - GetNextAction - next action requested");
+            ActionModel actionDefinition = this.ActionProvider.GetNextScheduledAction();
+            var serializedActionDefinition = JsonConvert.SerializeObject(actionDefinition);
+
+            return new ActionResult<string>(serializedActionDefinition);
+        }
+
+        // api/Action/ScheduleAction
+        [HttpGet("ScheduleAction")]
+        public ActionResult<string> ScheduleAction()
         {
             Logger.Information("ActionController - GetNextAction - next action requested");
             ActionModel actionDefinition = this.ActionProvider.GetNextScheduledAction();
