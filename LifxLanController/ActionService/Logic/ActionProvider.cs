@@ -39,13 +39,11 @@ namespace ActionService.Logic
         IDictionary<ActionSchedule, bool> ActionsSchedule;
         IDictionary<string, ActionDefinition> ActionsDefinitions;
 
-        IHttpClientFactory HttpClientFactory;
         ILogger Logger;
 
-        public ActionProvider(IHttpClientFactory httpClientFactory, ILogger logger)
+        public ActionProvider(ILogger logger)
         {
             this.Logger = logger;
-            this.HttpClientFactory = httpClientFactory;
 
             Urls = new Dictionary<string, string>
             {
@@ -75,6 +73,28 @@ namespace ActionService.Logic
             this.ActionsSchedule = new Dictionary<ActionSchedule, bool>();
             InitializeActionsSchedule(actionStartWakeupName, actionDayTime.AddMinutes(-5), actionWeekendTime.AddMinutes(-5));
             InitializeActionsSchedule(actionStartFadeInName, actionDayTime, actionWeekendTime);
+
+            string testAction = "TestAction";
+            DayOfWeek? dayOfweek = DayOfWeek.Friday;
+            DateTime timeToRun = new DateTime(2000, 1, 1, hour: 19, minute: 20, second: 00);
+            string urlToRun = "getBulbs";
+            string paramsForUrl = null;
+            AddActionToSchedule(testAction, dayOfweek, timeToRun, urlToRun, paramsForUrl);
+        }
+
+        private void AddActionToSchedule(string testAction, DayOfWeek? dayOfweek, DateTime timeToRun, string urlToRun, string paramsForUrl)
+        {
+            this.ActionsSchedule.Add(new ActionSchedule
+            {
+                ActionName = testAction,
+                Day = dayOfweek,
+                Time = timeToRun,
+            }, true);
+            this.ActionsDefinitions.Add(testAction, new ActionDefinition
+            {
+                Url = urlToRun,
+                Params = paramsForUrl,
+            });
         }
 
         private void InitializeActionsDefinitions(string actionStartWakeupName, string actionStartFadeInName)
@@ -129,7 +149,7 @@ namespace ActionService.Logic
         {
             ActionSchedule actionSchedule = this.ActionsSchedule
                 .Where(x => x.Value)
-                .Where(x => x.Key.Day == DateTime.Now.DayOfWeek)
+                .Where(x => !x.Key.Day.HasValue || x.Key.Day == DateTime.Now.DayOfWeek)
                 .Where(x => x.Key.Time.TimeOfDay <= DateTime.Now.TimeOfDay)
                 .Where(x => x.Key.Time.AddMinutes(30).TimeOfDay > DateTime.Now.TimeOfDay)
                 .Select(x => x.Key)

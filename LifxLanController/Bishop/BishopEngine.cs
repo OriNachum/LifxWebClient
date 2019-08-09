@@ -19,15 +19,17 @@ namespace Bishop
         ITimer timer;
         private readonly TimeSpan SleepTime = TimeSpan.FromSeconds(5);
         ILogger Logger;
-        IActionProvider _actionProvider;
         IHttpClientFactory HttpClientFactory;
+        string GetNextActionUrl = "https://ori/ActionService/api/Action";
+            // "https://localhost:44306/api/Action/GetNextAction";
+            //$"https://ori/ActionService/api/Action/GetNextAction"; 
+            // https://ori:444/ActionService/api/Action/GetNextAction
 
-        public BishopEngine(IActionProvider actionProvider, IHttpClientFactory httpClientFactory, ILogger logger)
+        public BishopEngine(IHttpClientFactory httpClientFactory, ILogger logger)
         {
             this.HttpClientFactory = httpClientFactory;
 
             Logger = logger;
-            _actionProvider = actionProvider;
         }
 
         public void Start()
@@ -46,7 +48,7 @@ namespace Bishop
             // IActionProvider actionProvider = _actionProvider;
             using (var client = this.HttpClientFactory.CreateClient())
             {
-                HttpResponseMessage response = await client.GetAsync($"https://ori:444/ActionService/api/Action/GetNextAction"); // https://ori:444/ActionService/api/Action/GetNextAction
+                HttpResponseMessage response = await client.GetAsync(GetNextActionUrl); 
                 if (!response.IsSuccessStatusCode)
                 {
                     Logger.Error($"BishopEngine - NextCycleAction - Error in request for next action. response: {response}");

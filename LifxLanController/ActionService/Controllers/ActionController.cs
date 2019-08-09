@@ -17,24 +17,11 @@ namespace ActionService.Controllers
     {
         IActionProvider ActionProvider;
 
-        ILogger _logger = null;
+        public ILogger Logger { get; set; }
 
-        ILogger Logger
+        public ActionController([FromServices] IActionProvider actionProvider, ILogger logger)
         {
-            get
-            {
-                if (_logger == null)
-                {
-                    _logger = new LoggerConfiguration()
-                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\ActionController.log", shared: true)
-                    .CreateLogger();
-                }
-                return _logger;
-            }
-        }
-
-        public ActionController([FromServices] IActionProvider actionProvider)
-        {
+            this.Logger = logger;
             this.Logger.Information("ActionController started");
             this.ActionProvider = actionProvider;
         }
@@ -49,43 +36,5 @@ namespace ActionService.Controllers
 
             return new ActionResult<string>(serializedActionDefinition);
         }
-
-        //[HttpGet]
-        //public ActionResult<string> ResolveAction()
-        //{
-        //    this.ActionProvider()
-        //}
-
-        // GET api/values
-        //[HttpGet]
-        //public ActionResult<IEnumerable<string>> Get()
-        //{
-        //    return new string[] { "value1", "value2" };
-        //}
-
-        //// GET api/values/5
-        //[HttpGet("{id}")]
-        //public ActionResult<string> Get(int id)
-        //{
-        //    return "value";
-        //}
-
-        //// POST api/values
-        //[HttpPost]
-        //public void Post([FromBody] string value)
-        //{
-        //}
-
-        //// PUT api/values/5
-        //[HttpPut("{id}")]
-        //public void Put(int id, [FromBody] string value)
-        //{
-        //}
-
-        //// DELETE api/values/5
-        //[HttpDelete("{id}")]
-        //public void Delete(int id)
-        //{
-        //}
     }
 }

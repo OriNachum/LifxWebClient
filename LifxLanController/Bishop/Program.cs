@@ -32,9 +32,8 @@ namespace Bishop
 
             IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
             IHttpClientFactory httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
-            var actionProvider = new ActionProvider(httpClientFactory, Logger);
 
-            using (IBishopEngine engine = new BishopEngine(actionProvider, httpClientFactory, Logger))
+            using (IBishopEngine engine = new BishopEngine(httpClientFactory, Logger))
             {
                 engine.Start();
 
