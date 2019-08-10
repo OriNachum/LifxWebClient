@@ -39,8 +39,9 @@ namespace LifxCoreController
             }
         }
 
-        public LifxApi()
+        public LifxApi(ILogger logger) : base(logger)
         {
+            _logger = logger;
             Task.Run(() => StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME));
         }
 

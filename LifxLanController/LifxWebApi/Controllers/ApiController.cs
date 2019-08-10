@@ -18,23 +18,7 @@ namespace LifxWebApi.Controllers
     [ApiController]
     public class ApiController : ControllerBase
     {
-        static object lifxLock = new object();
-        static ILifxApi _lifx;
-        static ILifxApi Lifx
-        {
-            get
-            {
-                lock(lifxLock)
-                {
-                    if (_lifx == null)
-                    {
-                        _lifx = new LifxApi();
-                    }
-
-                    return _lifx;
-                }
-            }
-        }
+        private ILifxApi Lifx;
 
         ILogger _logger = null;
 
@@ -52,20 +36,26 @@ namespace LifxWebApi.Controllers
             }
         }
 
+        public ApiController(ILifxApi lifxApi, ILogger logger)
+        {
+            _logger = logger;
+            Lifx = lifxApi;
+        }
+
         // GET api/values11
         [HttpGet("Reset")]
         public ActionResult<eLifxResponse> Reset()
         {
             Logger.Information("ApiController - Reset");
-            lock (lifxLock)
-            {
-                if (_lifx != null)
-                {
-                    _lifx.Dispose();
-                }
+            //lock (lifxLock)
+            //{
+            //    if (_lifx != null)
+            //    {
+            //        _lifx.Dispose();
+            //    }
 
-                _lifx = new LifxApi();
-            }
+            //    _lifx = new LifxApi();
+            //}
             // Added automatic refresh
             return eLifxResponse.Success;
         }

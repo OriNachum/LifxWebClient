@@ -46,8 +46,9 @@ namespace LifxCoreController
             }
         }
 
-        public LifxDetector()
+        public LifxDetector(ILogger logger)
         {
+            _logger = logger;
             _bulbs = new ConcurrentDictionary<IPAddress, IAdvancedBulb>();
         }
 

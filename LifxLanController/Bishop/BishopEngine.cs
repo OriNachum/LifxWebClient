@@ -81,7 +81,7 @@ namespace Bishop
 
             try
             {
-                Logger.Information("BishopEngine - NextCycleAction - Found an action to perform.. starting");
+                Logger.Information($"BishopEngine - NextCycleAction - Found an action to perform.. starting {model.FullUrl}");
                 string response = await action();
                 Logger.Information($"BishopEngine - NextCycleAction - Completed. Response: {response}");
             }
