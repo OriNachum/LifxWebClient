@@ -44,7 +44,7 @@ namespace Infrared.Impl
             };
         }
 
-        public string GetUrl(eService service, Enum actionId)
+        public string GetUrl(eService service, string actionId)
         {
             if (!this.Urls.ContainsKey(service))
             {
@@ -52,7 +52,7 @@ namespace Infrared.Impl
                 return null;
             }
 
-            return $"{ActiveSite}/{service.ToString()}/{this.Urls[service]}/{actionId.ToString()}";
+            return $"{ActiveSite}/{service.ToString()}/{this.Urls[service]}/{actionId}";
         }
     }
 }

@@ -1,17 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Newtonsoft.Json;
+using System;
 
-namespace ProvidersInterface
+namespace ActionService.Models
 {
+    [JsonObject]
     public class ActionDefinition
     {
-        public Enum Url { get; set; }
+        [JsonProperty("Url")]
+        public string Url { get; set; }
+        [JsonProperty("Params")]
         public string Params { get; set; }
 
         public override string ToString()
         {
-            return $"Url: {Url.ToString()}, Params: {Params}";
+            return JsonConvert.SerializeObject(this);
         }
+        
+
+        //public override string ToString()
+        //{
+        //    return $"Url: {Url.ToString()}, Params: {Params}";
+        //}
     }
 }

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Infrared.Enums
 {
-    public enum eLifxWebApi
+    public enum eLifxWebApi : short
     {
         GetBulbs,
         Reset,

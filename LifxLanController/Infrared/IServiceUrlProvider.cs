@@ -7,6 +7,6 @@ namespace Infrared
 {
     public interface IServiceUrlProvider
     {
-        string GetUrl(eService service, Enum actionId);
+        string GetUrl(eService service, string actionId);
     }
 }

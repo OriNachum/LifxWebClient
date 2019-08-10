@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Infrared.Enums
 {
-    public enum eService
+    public enum eService : short
     {
         LifxWebApi,
         ActionService,

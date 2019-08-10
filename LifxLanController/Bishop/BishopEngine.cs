@@ -28,7 +28,7 @@ namespace Bishop
         {
             get
             {
-                return this.ServiceUrlProvider.GetUrl(eService.ActionService, eActionServiceUrl.GetNext);
+                return this.ServiceUrlProvider.GetUrl(eService.ActionService, eActionServiceUrl.GetNext.ToString());
             }
         }
 

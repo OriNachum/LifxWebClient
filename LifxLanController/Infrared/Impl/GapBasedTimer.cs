@@ -13,27 +13,26 @@ namespace Infrared.Impl
     {
         private readonly TimeSpan NEVER = TimeSpan.FromMilliseconds(-1);
         private Timer timer = null;
-        TimeSpan timerSleepSpan;
+        TimeSpan TimerSleepSpan;
         Func<Task> timerCallbackAsync;
         private ILogger _logger;
 
         public GapBasedTimer(Func<Task> callback = null, TimeSpan? sleepSpan = null, ILogger logger = null)
         {
             _logger = logger;
-            ResetTimerProperties(callback, sleepSpan);
+            var initialSleepSpan = sleepSpan ?? NEVER;
+            ResetTimerProperties(callback, initialSleepSpan);
         }
 
-        private void ResetTimerProperties(Func<Task> callback, TimeSpan? sleepSpan)
+        private void ResetTimerProperties(Func<Task> callback, TimeSpan sleepSpan)
         {
             _logger?.Information("GapBasedTimer - ResetTimerProperties - started");
             if (callback != null)
             {
                 this.timerCallbackAsync = callback;
             }
-            if (sleepSpan.HasValue)
-            {
-                timerSleepSpan = sleepSpan.Value;
-            }
+
+            this.TimerSleepSpan = sleepSpan;
         }
 
         public void InitializeCallback(Func<Task> callback, TimeSpan sleepSpan)
@@ -55,7 +54,7 @@ namespace Infrared.Impl
                     _logger.Error($"GapBasedTimer - InitializeCallback - timerCallbackAsync tried to raise callback and throw an exception: { ex }");
                     throw;
                 }
-                ScheduleTimerToRun(timerSleepSpan);
+                ScheduleTimerToRun(this.TimerSleepSpan);
             }
 
             _logger?.Information("GapBasedTimer - InitializeCallback - Running first time");
@@ -66,7 +65,7 @@ namespace Infrared.Impl
             timer = new Timer(async (state) => await timerCallBackWrapperAsync(state));
 
             _logger?.Information("GapBasedTimer - InitializeCallbackAsync - Scheduling timer for next run");
-            ScheduleTimerToRun(timerSleepSpan);
+            ScheduleTimerToRun(this.TimerSleepSpan);
         }
 
         public void Pause()
@@ -81,10 +80,10 @@ namespace Infrared.Impl
 
             if (sleepSpan.HasValue)
             {
-                timerSleepSpan = sleepSpan.Value;
+                this.TimerSleepSpan = sleepSpan.Value;
             }
 
-            ScheduleTimerToRun(timerSleepSpan);
+            ScheduleTimerToRun(this.TimerSleepSpan);
         }
         
         void ScheduleTimerToRun(TimeSpan timerSleepSpanForNextRun)

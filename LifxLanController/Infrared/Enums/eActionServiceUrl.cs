@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Infrared.Enums
 {
-    public enum eActionServiceUrl
+    public enum eActionServiceUrl : short
     {
         GetNext,
         ScheduleAction,
