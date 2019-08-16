@@ -39,6 +39,8 @@ namespace ActionService.Logic
 
             this.ServiceUrlProvider = serviceUrlProvider;
 
+            // InitializeArraysHardCoded();
+
             // SaveActionsSchedule();
             LoadActionsSchedule();
 
@@ -91,18 +93,8 @@ namespace ActionService.Logic
             });
         }
 
-        private void InitializeActionsDefinitions(string actionStartWakeupName, string actionStartFadeInName)
+        private void InitializeActionsDefinitions(string actionStartWakeupName, string actionStartFadeInName, string actionTurnOnBulbName, string actionFadeInName)
         {
-            var bulbState = new BulbState
-            {
-                Brightness = 1,
-                Temperature = 3550,
-                Power = Lifx.Power.On,
-                Saturation = 0,
-                Hue = 0,
-            };
-            var serializedBulbState = JsonConvert.SerializeObject(bulbState);
-
             this.ActionsDefinitions = new Dictionary<string, ActionDefinition>
             {
                 {
@@ -114,8 +106,22 @@ namespace ActionService.Logic
                 {
                     actionStartFadeInName, new ActionDefinition
                     {
-                        Url = eLifxWebApi.FadeToState.ToString(),
-                        Params = $"?label={"Bedroom"}&serializedState={serializedBulbState}&fadeInDuration={900000}",
+                        Url = eLifxWebApi.SetBrightness.ToString(),
+                        Params = $"?label={"Bedroom"}&brightness={0.01}&fadeInDuration={0}",
+                    }
+                },
+                {
+                    actionTurnOnBulbName, new ActionDefinition
+                    {
+                        Url = eLifxWebApi.SetPower.ToString(),
+                        Params = $"?label={"Bedroom"}&onOffState={"on"}",
+                    }
+                },
+                {
+                    actionFadeInName, new ActionDefinition
+                    {
+                        Url = eLifxWebApi.SetBrightness.ToString(),
+                        Params = $"?label={"Bedroom"}&brightness={1}&fadeInDuration={900000}",
                     }
                 },
             };
@@ -190,23 +196,31 @@ namespace ActionService.Logic
         private void InitializeArraysHardCoded()
         {
             string actionStartWakeupName = "Wakeup";
-            string actionStartFadeInName = "FadeIn";
+            string actionInitFadeInName = "StartFadeIn";
+            string actionTurnOnBulbName = "TuronOnBulb";
+            string actionFadeInName = "FadeIn";
 
             var actionDayTime = new DateTime(2000, 1, 1, hour: 7, minute: 30, second: 00);
             var actionWeekendTime = new DateTime(2000, 1, 1, hour: 9, minute: 30, second: 00);
 
-            InitializeActionsDefinitions(actionStartWakeupName, actionStartFadeInName);
+            InitializeActionsDefinitions(actionStartWakeupName, actionInitFadeInName, actionTurnOnBulbName, actionFadeInName);
 
             this.ActionsSchedule = new Dictionary<ActionSchedule, bool>();
             InitializeActionsSchedule(actionStartWakeupName, actionDayTime.AddMinutes(-5), actionWeekendTime.AddMinutes(-5));
-            InitializeActionsSchedule(actionStartFadeInName, actionDayTime, actionWeekendTime);
+            InitializeActionsSchedule(actionInitFadeInName, actionDayTime, actionWeekendTime);
+            InitializeActionsSchedule(actionTurnOnBulbName, actionDayTime.AddMinutes(1), actionWeekendTime.AddMinutes(1));
+            InitializeActionsSchedule(actionFadeInName, actionDayTime.AddMinutes(2), actionWeekendTime.AddMinutes(2));
 
-            string testAction = "TestAction";
-            DayOfWeek? dayOfweek = DayOfWeek.Friday;
-            DateTime timeToRun = new DateTime(2000, 1, 1, hour: 19, minute: 20, second: 00);
-            var urlCodeToRun = eLifxWebApi.GetBulbs.ToString();
-            string paramsForUrl = null;
-            AddActionToSchedule(testAction, dayOfweek, timeToRun, urlCodeToRun, paramsForUrl);
+            /*
+                string testAction = "TestAction";
+                DayOfWeek? dayOfweek = DayOfWeek.Friday;
+                DateTime timeToRun = DateTime.Now.AddMinutes(2);
+                var urlCodeToRun = eLifxWebApi.GetBulbs.ToString();
+                string paramsForUrl = null;
+                AddActionToSchedule(testAction, dayOfweek, timeToRun, urlCodeToRun, paramsForUrl);
+                InitializeActionsSchedule(actionStartFadeInName, timeToRun, timeToRun);
+                InitializeActionsSchedule(actionFadeInName, timeToRun.AddMinutes(1), timeToRun.AddMinutes(1));
+            */
         }
     }
 }

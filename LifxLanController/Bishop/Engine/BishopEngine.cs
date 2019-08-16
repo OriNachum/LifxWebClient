@@ -7,13 +7,15 @@ using System.Text;
 using System.Threading.Tasks;
 using ProvidersInterface;
 using ProvidersInterface.Enums;
-using ActionService.Logic;
 using ProvidersInterface.Models;
 using System.Net.Http;
 using Newtonsoft.Json;
 using Infrared.Enums;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Features;
+using System.Threading;
 
-namespace Bishop
+namespace Bishop.Engine
 {
     public class BishopEngine : IBishopEngine
     {
@@ -32,6 +34,10 @@ namespace Bishop
             }
         }
 
+        public IFeatureCollection ServerFeatures => throw new NotImplementedException();
+
+        public IServiceProvider Services => throw new NotImplementedException();
+
         public BishopEngine(IHttpClientFactory httpClientFactory, ILogger logger, IServiceUrlProvider serviceUrlProvider)
         {
             this.HttpClientFactory = httpClientFactory;
@@ -39,13 +45,39 @@ namespace Bishop
             this.ServiceUrlProvider = serviceUrlProvider;
         }
 
+        private Func<Task<string>> GenerateActionFromScheduleModel(ActionModel actionModel)
+        {
+            Func<Task<string>> nextAction = async () =>
+            {
+                this.Logger.Information("ActionProvider - GenerateActionFromScheduleModel - nextAction - Generated Action started");
+                using (var client = this.HttpClientFactory.CreateClient())
+                {
+                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url request: {actionModel.FullUrl}");
+                    var response = await client.GetAsync(actionModel.FullUrl);
+                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url response: {response}");
+                    return response.ToString();
+                }
+            };
+            return nextAction;
+        }
+        
+
         public void Start()
         {
             Func<Task> GenerateNextCycleAction = NextCycleAction;
+            timer?.Dispose();
             timer = new GapBasedTimer(GenerateNextCycleAction, SleepTime, Logger);
             timer.InitializeCallback(GenerateNextCycleAction, SleepTime);
-            // wait NextCycleAction();
-            // Loop queries database (Refresh) and asks for state
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
         }
 
 
@@ -55,7 +87,7 @@ namespace Bishop
             // IActionProvider actionProvider = _actionProvider;
             using (var client = this.HttpClientFactory.CreateClient())
             {
-                HttpResponseMessage response = await client.GetAsync(GetNextActionUrl); 
+                HttpResponseMessage response = await client.GetAsync(GetNextActionUrl);
                 if (!response.IsSuccessStatusCode)
                 {
                     Logger.Error($"BishopEngine - NextCycleAction - Error in request for next action. response: {response}");
@@ -91,31 +123,10 @@ namespace Bishop
             }
         }
 
-        private Func<Task<string>> GenerateActionFromScheduleModel(ActionModel actionModel)
-        {
-            Func<Task<string>> nextAction = async () =>
-            {
-                this.Logger.Information("ActionProvider - GenerateActionFromScheduleModel - nextAction - Generated Action started");
-                using (var client = this.HttpClientFactory.CreateClient())
-                {
-                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url request: {actionModel.FullUrl}");
-                    var response = await client.GetAsync(actionModel.FullUrl);
-                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url response: {response}");
-                    return response.ToString();
-                }
-            };
-            return nextAction;
-        }
-
-        #region IDisposable
         public void Dispose()
         {
-            if (timer != null)
-            {
-                timer.Dispose();
-            }
-        } 
-        #endregion
-
+            timer?.Dispose();
+            timer = null;
+        }
     }
 }

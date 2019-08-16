@@ -216,7 +216,7 @@ namespace LifxCoreController
                     cancellationToken.Register(cts.Cancel);
                     light = await lightFactory.CreateLightAsync(candidateIpAddress, cancellationToken);
                     _logger.
-                        Information($".LifxDetector CreateLightMuffleExceptionAsync created bulb with IP: { string.Join('.', candidateIpAddress.GetAddressBytes()) }");
+                        Information($"LifxDetector CreateLightMuffleExceptionAsync created bulb with IP: { string.Join('.', candidateIpAddress.GetAddressBytes()) }");
                 }
                 catch (OperationCanceledException ex)
                 {

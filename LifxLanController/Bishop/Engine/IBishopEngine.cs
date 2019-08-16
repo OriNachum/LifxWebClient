@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Bishop
+namespace Bishop.Engine
 {
     public interface IBishopEngine : IDisposable
     {

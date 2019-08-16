@@ -1,1 +1,0 @@
-"{\"Wakeup\":{\"Url\":\"getBulbs\",\"Params\":null},\"FadeIn\":{\"Url\":\"fadeToState\",\"Params\":\"?label=Bedroom&serializedState={\\\"Power\\\":65535,\\\"Brightness\\\":1.0,\\\"Temperature\\\":3550,\\\"Hue\\\":0,\\\"Saturation\\\":0.0}&fadeInDuration=900000\"}}"

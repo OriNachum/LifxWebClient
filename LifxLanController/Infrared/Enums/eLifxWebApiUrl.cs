@@ -16,8 +16,9 @@ namespace Infrared.Enums
         Brightness,
         Color,
         Label,
-        Power,
+        SetPower,
         Temperature,
         FadeToState,
+        SetBrightness,
     }
 }

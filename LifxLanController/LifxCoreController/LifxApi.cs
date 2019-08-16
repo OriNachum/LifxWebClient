@@ -212,15 +212,40 @@ namespace LifxCoreController
                 }
 
                 long fadeInDurationValue = fadeInDuration.HasValue ? fadeInDuration.Value : 0;
-                var (response, date, serializedBulb) = await bulb.SetStateOverTimeAsync(state, fadeInDurationValue);
-                return (response, date, serializedBulb);
+                var (response, data, serializedBulb) = await bulb.SetStateOverTimeAsync(state, fadeInDurationValue);
+                return (response, data, serializedBulb);
             }
             catch (Exception ex)
             {
                 Logger.Error($"LifxApi - SetStateOverTimeAsync Got an exception when trying to change bulb: { label }; ex: { ex }");
                 return (eLifxResponse.ActionFailed, $"Failed on try to get bulb { label }, exception: { ex }", "");
             }
+        }
 
+        public async Task<(eLifxResponse response, string data, string bulb)> SetBrightnessOverTimeAsync(string label, double brightness, int? fadeInDuration)
+        {
+            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; state: { brightness }; overtime? { fadeInDuration }");
+
+            try
+            {
+                IAdvancedBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                if (bulb == null)
+                {
+                    Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");
+                    return (eLifxResponse.BulbDoesntExist, $"Could not find bulb by label { label }", "");
+                }
+
+                uint fadeInDurationValue = (fadeInDuration.HasValue && fadeInDuration.Value > 0) ? (uint)fadeInDuration.Value : 0;
+
+                Percentage percentageBrightness = brightness;
+                await bulb.SetBrightnessAsync(percentageBrightness, fadeInDurationValue);
+                return (eLifxResponse.Success, data: "", "");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"LifxApi - SetStateOverTimeAsync Got an exception when trying to change bulb: { label }; ex: { ex }");
+                return (eLifxResponse.ActionFailed, $"Failed on try to get bulb { label }, exception: { ex }", "");
+            }
         }
 
         private bool IsLightListObsolete()

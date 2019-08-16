@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace LifxWebApi
+namespace Bishop.Logger
 {
-    public class ActionServiceLogger : ILogger
+    public class BishopLogger : ILogger
     {
         ILogger _logger;
         ILogger Logger
@@ -18,7 +18,7 @@ namespace LifxWebApi
                 if (_logger == null)
                 {
                     _logger = new LoggerConfiguration()
-                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\ApiController.log", shared: true)
+                    .WriteTo.File($"C:\\Logs\\LifxWebApi\\BishopController.log", shared: true)
                     .CreateLogger();
                 }
                 return _logger;

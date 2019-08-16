@@ -7,16 +7,26 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using LifxCoreController;
+using NSubstitute;
+using Serilog;
 using Xunit;
 
 namespace LifxCoreControllerTest
 {
     public class LifxDetectorTest
     {
+        ILogger _logger;
+
+        public LifxDetectorTest()
+        {
+            _logger = Substitute.For<ILogger>();
+        }
+
+
         [Fact]
         public void CreateServerTest()
         {
-            var server = new LifxDetector();
+            var server = new LifxDetector(_logger);
             Assert.NotNull(server);
         }
 
@@ -25,7 +35,7 @@ namespace LifxCoreControllerTest
         {
             // Assign
             var knownIp = new IPAddress(new byte[] { 192, 168, 1, 11 });
-            using (var server = new LifxDetector())
+            using (var server = new LifxDetector(_logger))
             {
                 // Act
                 IEnumerable<IPAddress> allIpsQuery = await server.GetAllIpsInNetworkAsync();
@@ -40,7 +50,7 @@ namespace LifxCoreControllerTest
         public async Task DetectLights_Success()
         {
             // Assign
-            using (var server = new LifxDetector())
+            using (var server = new LifxDetector(_logger))
             {
                 var cancellationTokenSource = new CancellationTokenSource();
                 // Act

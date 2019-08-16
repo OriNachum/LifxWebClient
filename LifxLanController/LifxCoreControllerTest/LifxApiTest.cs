@@ -8,16 +8,27 @@ using System.Threading;
 using System.Threading.Tasks;
 using Lifx;
 using LifxCoreController;
+using LifxCoreController.Lightbulb;
+using NSubstitute;
+using Serilog;
 using Xunit;
 
 namespace LifxCoreControllerTest
 {
     public class LifxApiTest
     {
+        ILogger _logger;
+
+        public LifxApiTest()
+        {
+            _logger =  Substitute.For<ILogger>();
+        }
+
+
         [Fact]
         public void CreateServerTest()
         {
-            var server = new LifxApi();
+            var server = new LifxApi(_logger);
             Assert.NotNull(server);
         }
 
@@ -25,8 +36,8 @@ namespace LifxCoreControllerTest
         public async Task DetectNearbyDevices_Success()
         {
             // Assign
-            var knownIp = new IPAddress(new byte[] { 192, 168, 1, 11 });
-            using (var server = new LifxDetector())
+            var knownIp = new IPAddress(new byte[] { 10, 0, 0, 3 });
+            using (var server = new LifxDetector(_logger))
             {
                 // Act
                 IEnumerable<IPAddress> allIpsQuery = await server.GetAllIpsInNetworkAsync();
@@ -42,17 +53,34 @@ namespace LifxCoreControllerTest
         {
             // Assign
             var cts = new CancellationTokenSource();
-            var knownIp = new IPAddress(new byte[] { 192, 168, 1, 11 });
-            using (var server = new LifxDetector())
+            var knownIp = new IPAddress(new byte[] { 10, 0, 0, 4 });
+            using (var server = new LifxDetector(_logger))
             {
                 // Act
                 await server.DetectLightsAsync(cts.Token);
-                foreach (ILight light in server.Bulbs.Values)
+                IAdvancedBulb light = server.Bulbs.Values
+                    .Where(x => x.Label == "Television")
+                    .FirstOrDefault();
+                Assert.NotNull(light);
+                // foreach (ILight light in server.Bulbs.Values)
                 {
                     uint second = 1000;
                     uint minute = second * 60;
-                    uint minutes5 = minute * 5;
-                    await light.OnAsync(minutes5);
+                    uint minutes = minute * 10;
+
+                    Power newPower = (light.State.Power.Value == Power.On) ? Power.Off : Power.On;
+                    Percentage newBrightness = 0.01;
+
+                    //await light.SetPowerAsync(newPower, second);
+                    await light.SetBrightnessAsync(newBrightness, second);
+                    //if (light.State.Power.Value == Power.Off)
+                    //{
+                    //    await light.OnAsync(minutes);
+                    //}
+                    //else
+                    //{
+                    //    await light.OffAsync(minutes);
+                    //}
                 }
 
                 // Assert

@@ -13,8 +13,13 @@ namespace LifxCoreController.Lightbulb
 
         Task<LightState> GetStateAsync(CancellationToken token);
         Task OnAsync();
+        Task OnAsync(uint durationInMilliseconds);
         Task OffAsync();
+        Task OffAsync(uint durationInMilliseconds);
         void Dispose();
         Task SetPowerAsync(Power power);
+        Task SetPowerAsync(Power power, uint durationInMilliseconds);
+
+        Task SetBrightnessAsync(Percentage brightness, uint durationInMilliseconds);
     }
 }

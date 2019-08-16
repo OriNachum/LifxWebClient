@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Infrared.Enums;
 using Lifx;
 using LifxCoreController;
 using LifxCoreController.Lightbulb;
@@ -66,10 +67,10 @@ namespace LifxWebApi.Controllers
         {
             Logger.Information("ApiController - GetBulbs");
 
-            var (response, message) = await Lifx.RefreshBulbsAsync();
+            var (response, message) = await this.Lifx.RefreshBulbsAsync();
             if (response == eLifxResponse.Success)
             {
-                IEnumerable<IBulb> ips = Lifx.Bulbs.Values.ToList();
+                IEnumerable<IBulb> ips = this.Lifx.Bulbs.Values.ToList();
                 var serializedIps = JsonConvert.SerializeObject(ips);
                 return new { responseType = (int)response, bulbs = serializedIps };
             }
@@ -77,11 +78,11 @@ namespace LifxWebApi.Controllers
         }
 
         [HttpGet("Toggle")]
-        public async Task<ActionResult<object>> GetToggleLightAsyncParam(string label)
+        public async Task<ActionResult<object>> GetToggleLightAsync(string label)
         {
             Logger.Information($"ApiController - Toggle label: { label }");
 
-            (eLifxResponse response, string message) = await Lifx.ToggleLightAsync(label);
+            (eLifxResponse response, string message) = await this.Lifx.ToggleLightAsync(label);
 
             IEnumerable<IBulb> ips = Lifx.Bulbs.Values.ToList();
             var serializedIps = JsonConvert.SerializeObject(ips);
@@ -94,7 +95,7 @@ namespace LifxWebApi.Controllers
         {
             Logger.Information("ApiController - Refresh");
 
-            (eLifxResponse response, string message) = await Lifx.RefreshBulbsAsync();
+            (eLifxResponse response, string message) = await this.Lifx.RefreshBulbsAsync();
 
             return response.ToString() + ": " + message;
         }
@@ -104,7 +105,7 @@ namespace LifxWebApi.Controllers
         {
             Logger.Information($"ApiController - RefreshBulb({ label })");
 
-            (eLifxResponse response, string message, string bulb) = await Lifx.RefreshBulbAsync(label);
+            (eLifxResponse response, string message, string bulb) = await this.Lifx.RefreshBulbAsync(label);
 
             return new { responseType = (int)response, responseData = message, bulb };
         }
@@ -114,7 +115,7 @@ namespace LifxWebApi.Controllers
         {
             Logger.Information($"ApiController - Off label: { label }; overtime: { overTime }");
 
-            var (response, data, bulb) = await Lifx.OffAsync(label, 0);
+            var (response, data, bulb) = await this.Lifx.OffAsync(label, 0);
             return new { responseType = 0, responseData = data, bulb };
         }
 
@@ -124,32 +125,47 @@ namespace LifxWebApi.Controllers
         {
             Logger.Information($"ApiController - On label: { label }; overtime: { overTime }");
 
-            var (response, messages, bulb) = await Lifx.OnAsync(label, overTime);
+            var (response, messages, bulb) = await this.Lifx.OnAsync(label, overTime);
             return new { responseType = (int)response, responseData = messages, bulb };
         }
 
         
         [HttpGet("FadeToState")]
-        public async Task<ActionResult<object>> FadeToState(string label, string serializedState, long? fadeInDuration)
+        public async Task<ActionResult<object>> FadeToStateAsync(string label, string serializedState, long? fadeInDuration)
         {
             Logger.Information($"ApiController - FadeToState - label: { label }; state: { serializedState }; overtime: { fadeInDuration }");
 
             IBulbState state = JsonConvert.DeserializeObject<BulbState>(serializedState);
             Logger.Information($"ApiController - deserialized state: { state }");
 
-            var (response, messages, bulb) = await Lifx.SetStateOverTimeAsync(label, state, fadeInDuration);
+            var (response, messages, bulb) = await this.Lifx.SetStateOverTimeAsync(label, state, fadeInDuration);
             return new { responseType = (int)response, responseData = messages, bulb };
         }
 
+        [HttpGet("SetBrightness")]
+        public async Task<ActionResult<object>> SetBrightnessAsync(string label, string brightness, int? fadeInDuration)
+        {
+            Logger.Information($"ApiController - SetBrightness - label: { label }; brightness: { brightness }; overtime: { fadeInDuration }");
+
+            if (double.TryParse(brightness, out double parsedBrightness))
+            {
+                Logger.Information($"ApiController - deserialized brightness: { parsedBrightness }");
+
+                var (response, messages, bulb) = await this.Lifx.SetBrightnessOverTimeAsync(label, parsedBrightness, fadeInDuration);
+                return new { responseType = (int)response, responseData = messages, bulb };
+            }
+            return new { responseType = (int)eLifxResponse.BadParameter, responseData = "", bulb = "" };
+        }
+
         [HttpGet("SetPower")]
-        public async Task<ActionResult<string>> GetSetPowerAsync(string label, string onOffState)
+        public async Task<ActionResult<string>> SetPowerAsync(string label, string onOffState)
         {
             bool valid = !string.IsNullOrEmpty(onOffState);
             valid = valid  && new string[] { "off", "on" }.Contains(onOffState.ToLower());
             if (onOffState != null && valid)
             {
                 Power power = onOffState.ToLower().Equals("on") ? Power.On : Power.Off;
-                IBulb lightBulb = Lifx.Bulbs.FirstOrDefault(x => x.Value.Label == label).Value;
+                IBulb lightBulb = this.Lifx.Bulbs.FirstOrDefault(x => x.Value.Label == label).Value;
                 await lightBulb.SetPowerAsync(power);
             }
             return "";

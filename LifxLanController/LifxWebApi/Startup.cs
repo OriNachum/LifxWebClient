@@ -14,7 +14,7 @@ using Serilog;
 
 namespace LifxWebApi
 {
-    public class Startup
+    public class Startup : IStartup
     {
         public Startup(IConfiguration configuration)
         {
@@ -24,12 +24,13 @@ namespace LifxWebApi
         public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services)
+        public IServiceProvider ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddSingleton<ILifxApi, LifxApi>();
-            services.AddSingleton<ILogger, ActionServiceLogger>();
+            services.AddSingleton<ILogger, LifxWebApiServiceLogger>();
             // services.AddCors();
+            return services.BuildServiceProvider();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -44,6 +45,13 @@ namespace LifxWebApi
                 app.UseHsts();
             }
 
+            app.UseHttpsRedirection();
+            app.UseMvc();
+        }
+
+        public void Configure(IApplicationBuilder app)
+        {
+            app.UseHsts();
             app.UseHttpsRedirection();
             app.UseMvc();
         }

@@ -19,7 +19,7 @@ using Serilog;
 
 namespace ActionService
 {
-    public class Startup
+    public class Startup : IStartup
     {
         public Startup(IConfiguration configuration)
         {
@@ -29,7 +29,7 @@ namespace ActionService
         public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services)
+        public IServiceProvider ConfigureServices(IServiceCollection services)
         {
             //IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
             //IHttpClientFactory httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
@@ -41,6 +41,8 @@ namespace ActionService
             services.AddSingleton<IActionProvider, ActionProvider>();
             services.Configure<ActionProvider>(Configuration);
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+            return services.BuildServiceProvider();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -56,6 +58,14 @@ namespace ActionService
                 app.UseHsts();
             }
 
+            app.UseHttpsRedirection();
+            app.UseMvc();
+        }
+
+        public void Configure(IApplicationBuilder app)
+        {
+            app.UseHsts();
+        
             app.UseHttpsRedirection();
             app.UseMvc();
         }

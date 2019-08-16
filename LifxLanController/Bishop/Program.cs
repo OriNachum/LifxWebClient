@@ -1,15 +1,22 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Http;
+using System.ServiceProcess;
 using System.Threading.Tasks;
-using ActionService.Logic;
+using Bishop.Engine;
+using Bishop.Service;
 using Infrared.Impl;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.WindowsServices;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Core;
 
 namespace Bishop
 {
-    class Program
+    public class Program
     {
         private static ILogger _logger = null;
 
@@ -31,17 +38,46 @@ namespace Bishop
         {
             Logger.Information("Test Program for bishop started!");
 
-            IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
-            IHttpClientFactory httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
+            var serviceCollection = new ServiceCollection();
+            var bishopShartup = new BishopStartup();
+            IServiceProvider serviceProvider = bishopShartup.ConfigureServices(serviceCollection);
 
-            var serviceUrlProvider = new ServiceUrlProvider(Logger);
-
-            using (IBishopEngine engine = new BishopEngine(httpClientFactory, Logger, serviceUrlProvider))
+            if (args != null && args.Any() && args[0] == "console")
             {
-                engine.Start();
+                IHttpClientFactory httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
 
-                Console.WriteLine("Press any key to close service");
-                Console.ReadKey();
+                var serviceUrlProvider = new ServiceUrlProvider(Logger);
+                //using (var engine = new BishopEngine(httpClientFactory, Logger, serviceUrlProvider))
+                using (var engine = serviceProvider.GetService<IWebHost>())
+                {
+                    engine.Start();
+                    Console.WriteLine("Press any key to close service");
+                    Console.ReadKey();
+                }
+            }
+            else
+            {
+                // IWebHostBuilder webHostBuilder = WebHost.CreateDefaultBuilder(args)
+                //.UseStartup<BishopStartup>();
+                //using (var host = webHostBuilder.Build())
+                //{
+                //    //BishopService item =null;
+                //    //item.RunAsService()
+                //    host.RunAsService();
+                //}
+                //}
+                ;
+                using (var bishopService = serviceProvider.GetService<IWebHost>())
+                {
+                    try
+                    {
+                        bishopService.RunAsService();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Information($"bishopService RunAsService encoutnered an exception: {ex}");
+                    }
+                }
             }
 
             Logger.Information("Test Program for bishop ended!");

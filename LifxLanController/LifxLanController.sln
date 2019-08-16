@@ -17,7 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Infrared", "Infrared\Infrar
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProvidersInterface", "ProvidersInterface\ProvidersInterface.csproj", "{6E72BD7F-FA3B-410B-8168-77ED6A489AE3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActionService", "ActionService\ActionService.csproj", "{161A24D1-20A2-41F9-B297-CF453F44B9B5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ActionService", "ActionService\ActionService.csproj", "{161A24D1-20A2-41F9-B297-CF453F44B9B5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

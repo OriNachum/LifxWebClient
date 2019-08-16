@@ -20,7 +20,7 @@ namespace Infrared.Impl
         {
             get
             {
-                return Sites["devIis"];
+                return $"{Sites["devIis"]}";
             }
         }
 
