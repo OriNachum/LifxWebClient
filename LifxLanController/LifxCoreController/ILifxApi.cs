@@ -30,7 +30,9 @@ namespace LifxCoreController
         Task<(eLifxResponse response, string data)> ToggleLightAsync(string label);
         Task<(eLifxResponse response, string data, string bulb)> OnAsync(string label, int? fadeDuration);
         Task<(eLifxResponse response, string data, string bulb)> OffAsync(string label, int? fadeDuration);
-        Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, IBulbState state, long? fadeInDuration);
+        // Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, IBulbState state, long? fadeInDuration);
         Task<(eLifxResponse response, string data, string bulb)> SetBrightnessOverTimeAsync(string label, double brightness, int? fadeInDuration);
+        Task<(eLifxResponse response, string data, string bulb)> SetTemperatureOverTimeAsync(string label, int temperature, int? fadeInDuration);
+        Task<(eLifxResponse response, string data, string bulb)> SetColorOverTimeAsync(string label, double saturation, int hue, int? fadeInDuration);
     }
 }

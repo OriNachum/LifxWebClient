@@ -19,7 +19,8 @@ namespace LifxCoreController.Lightbulb
         void Dispose();
         Task SetPowerAsync(Power power);
         Task SetPowerAsync(Power power, uint durationInMilliseconds);
-
         Task SetBrightnessAsync(Percentage brightness, uint durationInMilliseconds);
+        Task SetTemperatureAsync(Temperature brightness, uint durationInMilliseconds);
+        Task SetColorAsync(Color color, uint durationInMilliseconds);
     }
 }

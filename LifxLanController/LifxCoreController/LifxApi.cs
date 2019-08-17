@@ -198,33 +198,9 @@ namespace LifxCoreController
             return (eLifxResponse.Success, "", bulb);
         }
 
-        public async Task<(eLifxResponse response, string data, string bulb)> SetStateOverTimeAsync(string label, IBulbState state, long? fadeInDuration)
-        {
-            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; state: { state }; overtime? { fadeInDuration }");
-
-            try
-            {
-                IAdvancedBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
-                if (bulb == null)
-                {
-                    Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");
-                    return (eLifxResponse.BulbDoesntExist, $"Could not find bulb by label { label }", "");
-                }
-
-                long fadeInDurationValue = fadeInDuration.HasValue ? fadeInDuration.Value : 0;
-                var (response, data, serializedBulb) = await bulb.SetStateOverTimeAsync(state, fadeInDurationValue);
-                return (response, data, serializedBulb);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"LifxApi - SetStateOverTimeAsync Got an exception when trying to change bulb: { label }; ex: { ex }");
-                return (eLifxResponse.ActionFailed, $"Failed on try to get bulb { label }, exception: { ex }", "");
-            }
-        }
-
         public async Task<(eLifxResponse response, string data, string bulb)> SetBrightnessOverTimeAsync(string label, double brightness, int? fadeInDuration)
         {
-            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; state: { brightness }; overtime? { fadeInDuration }");
+            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; brightness: { brightness }; overtime? { fadeInDuration }");
 
             try
             {
@@ -239,6 +215,58 @@ namespace LifxCoreController
 
                 Percentage percentageBrightness = brightness;
                 await bulb.SetBrightnessAsync(percentageBrightness, fadeInDurationValue);
+                return (eLifxResponse.Success, data: "", "");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"LifxApi - SetStateOverTimeAsync Got an exception when trying to change bulb: { label }; ex: { ex }");
+                return (eLifxResponse.ActionFailed, $"Failed on try to get bulb { label }, exception: { ex }", "");
+            }
+        }
+
+        public async Task<(eLifxResponse response, string data, string bulb)> SetTemperatureOverTimeAsync(string label, int temperature, int? fadeInDuration)
+        {
+            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; temperature: { temperature }; overtime? { fadeInDuration }");
+
+            try
+            {
+                IAdvancedBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                if (bulb == null)
+                {
+                    Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");
+                    return (eLifxResponse.BulbDoesntExist, $"Could not find bulb by label { label }", "");
+                }
+
+                uint fadeInDurationValue = (fadeInDuration.HasValue && fadeInDuration.Value > 0) ? (uint)fadeInDuration.Value : 0;
+
+                Temperature temperatureValue = temperature;
+                await bulb.SetTemperatureAsync(temperatureValue, fadeInDurationValue);
+                return (eLifxResponse.Success, data: "", "");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"LifxApi - SetStateOverTimeAsync Got an exception when trying to change bulb: { label }; ex: { ex }");
+                return (eLifxResponse.ActionFailed, $"Failed on try to get bulb { label }, exception: { ex }", "");
+            }
+        }
+
+        public async Task<(eLifxResponse response, string data, string bulb)> SetColorOverTimeAsync(string label, double saturation, int hue, int? fadeInDuration)
+        {
+            Logger.Information($"LifxApi - SetStateOverTimeAsync light: { label }; saturation: { saturation }; hue: { hue }; overtime? { fadeInDuration }");
+
+            try
+            {
+                IAdvancedBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                if (bulb == null)
+                {
+                    Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");
+                    return (eLifxResponse.BulbDoesntExist, $"Could not find bulb by label { label }", "");
+                }
+
+                uint fadeInDurationValue = (fadeInDuration.HasValue && fadeInDuration.Value > 0) ? (uint)fadeInDuration.Value : 0;
+
+                Color color = new Color(hue, saturation);
+                await bulb.SetColorAsync(color, fadeInDurationValue);
                 return (eLifxResponse.Success, data: "", "");
             }
             catch (Exception ex)

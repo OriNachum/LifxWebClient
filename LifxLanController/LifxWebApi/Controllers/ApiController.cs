@@ -78,7 +78,7 @@ namespace LifxWebApi.Controllers
         }
 
         [HttpGet("Toggle")]
-        public async Task<ActionResult<object>> GetToggleLightAsync(string label)
+        public async Task<ActionResult<object>> ToggleLightAsync(string label)
         {
             Logger.Information($"ApiController - Toggle label: { label }");
 
@@ -91,7 +91,7 @@ namespace LifxWebApi.Controllers
         }
 
         [HttpGet("Refresh")]
-        public async Task<ActionResult<string>> GetRefreshBulbsAsync()
+        public async Task<ActionResult<string>> RefreshBulbsAsync()
         {
             Logger.Information("ApiController - Refresh");
 
@@ -101,7 +101,7 @@ namespace LifxWebApi.Controllers
         }
 
         [HttpGet("RefreshBulb")]
-        public async Task<ActionResult<object>> GetRefreshBulbAsync(string label)
+        public async Task<ActionResult<object>> RefreshBulbAsync(string label)
         {
             Logger.Information($"ApiController - RefreshBulb({ label })");
 
@@ -111,7 +111,7 @@ namespace LifxWebApi.Controllers
         }
 
         [HttpGet("Off")]
-        public async Task<ActionResult<object>> GetOffAsync(string label, int? overTime)
+        public async Task<ActionResult<object>> SetOffAsync(string label, int? overTime)
         {
             Logger.Information($"ApiController - Off label: { label }; overtime: { overTime }");
 
@@ -121,24 +121,11 @@ namespace LifxWebApi.Controllers
 
         // GET api/values/5
         [HttpGet("On")]
-        public async Task<ActionResult<object>> GetOnAsync(string label, int? overTime)
+        public async Task<ActionResult<object>> SetOnAsync(string label, int? overTime)
         {
             Logger.Information($"ApiController - On label: { label }; overtime: { overTime }");
 
             var (response, messages, bulb) = await this.Lifx.OnAsync(label, overTime);
-            return new { responseType = (int)response, responseData = messages, bulb };
-        }
-
-        
-        [HttpGet("FadeToState")]
-        public async Task<ActionResult<object>> FadeToStateAsync(string label, string serializedState, long? fadeInDuration)
-        {
-            Logger.Information($"ApiController - FadeToState - label: { label }; state: { serializedState }; overtime: { fadeInDuration }");
-
-            IBulbState state = JsonConvert.DeserializeObject<BulbState>(serializedState);
-            Logger.Information($"ApiController - deserialized state: { state }");
-
-            var (response, messages, bulb) = await this.Lifx.SetStateOverTimeAsync(label, state, fadeInDuration);
             return new { responseType = (int)response, responseData = messages, bulb };
         }
 
@@ -153,6 +140,40 @@ namespace LifxWebApi.Controllers
 
                 var (response, messages, bulb) = await this.Lifx.SetBrightnessOverTimeAsync(label, parsedBrightness, fadeInDuration);
                 return new { responseType = (int)response, responseData = messages, bulb };
+            }
+            return new { responseType = (int)eLifxResponse.BadParameter, responseData = "", bulb = "" };
+        }
+
+        [HttpGet("SetTemperature")]
+        public async Task<ActionResult<object>> SetTemperatureAsync(string label, string temperature, int? fadeInDuration)
+        {
+            Logger.Information($"ApiController - SetBrightness - label: { label }; brightness: { temperature }; overtime: { fadeInDuration }");
+
+            if (int.TryParse(temperature, out int parsedTemperature))
+            {
+                Logger.Information($"ApiController - deserialized brightness: { parsedTemperature }");
+
+                var (response, messages, bulb) = await this.Lifx.SetTemperatureOverTimeAsync(label, parsedTemperature, fadeInDuration);
+                return new { responseType = (int)response, responseData = messages, bulb };
+            }
+            return new { responseType = (int)eLifxResponse.BadParameter, responseData = "", bulb = "" };
+        }
+
+        [HttpGet("SetColor")]
+        public async Task<ActionResult<object>> SetColorAsync(string label, string saturation, string hue, int? fadeInDuration)
+        {
+            Logger.Information($"ApiController - SetBrightness - label: { label }; saturation: { saturation }; hue: { hue }; overtime: { fadeInDuration }");
+
+            if (double.TryParse(saturation, out double parsedSaturation))
+            {
+                Logger.Information($"ApiController - deserialized saturation: { parsedSaturation }");
+                if (int.TryParse(hue, out int parsedHue))
+                {
+                    Logger.Information($"ApiController - deserialized hue: { parsedHue }");
+
+                    var (response, messages, bulb) = await this.Lifx.SetColorOverTimeAsync(label, parsedSaturation, parsedHue, fadeInDuration);
+                    return new { responseType = (int)response, responseData = messages, bulb };
+                }
             }
             return new { responseType = (int)eLifxResponse.BadParameter, responseData = "", bulb = "" };
         }
