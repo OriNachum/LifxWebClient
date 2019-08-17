@@ -1,6 +1,7 @@
 ﻿using ProvidersInterface.Enums;
 using ProvidersInterface.Models;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ProvidersInterface
@@ -9,11 +10,10 @@ namespace ProvidersInterface
     {
         ActionModel GetNextScheduledAction();
         ScheduleModel GetFullSchedule();
+        IEnumerable<string> GetActions();
+        IEnumerable<string> GetSupportedActions();
+        bool CreateAction(string name, string supportedAction, string parameters);
 
-        void SetCurrentActionState(eActionState success);
-
-        void QueueState(Action action);
-
-        void ScheduleAction(Action action, ActionScheduleModel actionSchedule);
+        void ScheduleAction(string actionName, DateTime timeToRun, DayOfWeek? dayOfweek);
     }
 }

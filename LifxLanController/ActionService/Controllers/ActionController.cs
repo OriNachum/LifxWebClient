@@ -48,15 +48,53 @@ namespace ActionService.Controllers
             return new ActionResult<string>(serializedschedule);
         }
 
-        // api/Action/ScheduleAction
-        [HttpGet("ScheduleAction")]
-        public ActionResult<string> ScheduleAction()
+        // api/Action/GetSchedule
+        [HttpGet("GetActions")]
+        public ActionResult<string> GetActions()
         {
-            Logger.Information("ActionController - ScheduleAction - requested for a new schedule requested");
-            ActionModel actionDefinition = this.ActionProvider.GetNextScheduledAction();
-            var serializedActionDefinition = JsonConvert.SerializeObject(actionDefinition);
+            Logger.Information("ActionController - GetSchedule - full schedule requested");
+            IEnumerable<string> definedActionsIds = this.ActionProvider.GetActions();
+            var serializedschedule = JsonConvert.SerializeObject(definedActionsIds);
 
-            return new ActionResult<string>(serializedActionDefinition);
+            return new ActionResult<string>(serializedschedule);
+        }
+
+        // api/Action/GetSchedule
+        [HttpGet("GetSupportedActions")]
+        public ActionResult<string> GetSupportedActions()
+        {
+            Logger.Information("ActionController - GetSchedule - full schedule requested");
+            IEnumerable<string> definedActionsIds = this.ActionProvider.GetSupportedActions();
+            var serializedschedule = JsonConvert.SerializeObject(definedActionsIds);
+
+            return new ActionResult<string>(serializedschedule);
+        }
+
+        // api/Action/GetSchedule
+        [HttpGet("CreateAction")]
+        public ActionResult<string> CreateAction(string name, string supportedAction, string parameters)
+        {
+            Logger.Information("ActionController - GetSchedule - full schedule requested");
+            bool success = this.ActionProvider.CreateAction(name, supportedAction, parameters);
+            var serializedResult = success ? "Success" : "Fail";
+
+            return new ActionResult<string>(serializedResult);
+        }
+
+        // api/Action/GetSchedule
+        [HttpGet("ScheduleAction")]
+        public ActionResult<string> ScheduleAction(string name, string timeToRun, string dayOfWeek)
+        {
+            Logger.Information("ActionController - GetSchedule - full schedule requested");
+            DateTime parsedTimeToRun = JsonConvert.DeserializeObject<DateTime>(timeToRun);
+            DayOfWeek? parsedDayOfWeek = null;
+            if (dayOfWeek == null && Enum.TryParse(dayOfWeek, out DayOfWeek eDayOfWeek))
+            {
+                parsedDayOfWeek = eDayOfWeek;
+            }
+            this.ActionProvider.ScheduleAction(name, parsedTimeToRun, parsedDayOfWeek);
+
+            return new ActionResult<string>("Success");
         }
     }
 }
