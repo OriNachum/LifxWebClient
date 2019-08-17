@@ -212,10 +212,14 @@ namespace LifxCoreController
                 }
 
                 uint fadeInDurationValue = (fadeInDuration.HasValue && fadeInDuration.Value > 0) ? (uint)fadeInDuration.Value : 0;
-
-                Percentage percentageBrightness = brightness;
+                double fractionBrightness = brightness / 100;
+                if (fractionBrightness > Percentage.MaxValue || fractionBrightness < Percentage.MinValue)
+                {
+                    return (eLifxResponse.BadParameter, data: $"brightness: {brightness} should be between {Percentage.MinValue} and {Percentage.MaxValue}", "");
+                }
+                Percentage percentageBrightness = fractionBrightness;
                 await bulb.SetBrightnessAsync(percentageBrightness, fadeInDurationValue);
-                return (eLifxResponse.Success, data: "", "");
+                return (eLifxResponse.Success, data: "", bulb.Serialize());
             }
             catch (Exception ex)
             {
@@ -241,7 +245,7 @@ namespace LifxCoreController
 
                 Temperature temperatureValue = temperature;
                 await bulb.SetTemperatureAsync(temperatureValue, fadeInDurationValue);
-                return (eLifxResponse.Success, data: "", "");
+                return (eLifxResponse.Success, data: "", bulb.Serialize());
             }
             catch (Exception ex)
             {
@@ -267,7 +271,7 @@ namespace LifxCoreController
 
                 Color color = new Color(hue, saturation);
                 await bulb.SetColorAsync(color, fadeInDurationValue);
-                return (eLifxResponse.Success, data: "", "");
+                return (eLifxResponse.Success, data: "", bulb.Serialize());
             }
             catch (Exception ex)
             {

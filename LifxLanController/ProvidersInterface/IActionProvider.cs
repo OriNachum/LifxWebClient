@@ -8,6 +8,7 @@ namespace ProvidersInterface
     public interface IActionProvider
     {
         ActionModel GetNextScheduledAction();
+        ScheduleModel GetFullSchedule();
 
         void SetCurrentActionState(eActionState success);
 

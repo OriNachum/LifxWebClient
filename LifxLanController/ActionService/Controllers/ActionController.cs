@@ -37,11 +37,22 @@ namespace ActionService.Controllers
             return new ActionResult<string>(serializedActionDefinition);
         }
 
+        // api/Action/GetSchedule
+        [HttpGet("GetSchedule")]
+        public ActionResult<string> GetSchedule()
+        {
+            Logger.Information("ActionController - GetSchedule - full schedule requested");
+            ScheduleModel schedule = this.ActionProvider.GetFullSchedule();
+            var serializedschedule = JsonConvert.SerializeObject(schedule);
+
+            return new ActionResult<string>(serializedschedule);
+        }
+
         // api/Action/ScheduleAction
         [HttpGet("ScheduleAction")]
         public ActionResult<string> ScheduleAction()
         {
-            Logger.Information("ActionController - GetNextAction - next action requested");
+            Logger.Information("ActionController - ScheduleAction - requested for a new schedule requested");
             ActionModel actionDefinition = this.ActionProvider.GetNextScheduledAction();
             var serializedActionDefinition = JsonConvert.SerializeObject(actionDefinition);
 

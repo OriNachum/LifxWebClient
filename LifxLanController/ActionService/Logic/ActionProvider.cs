@@ -164,13 +164,49 @@ namespace ActionService.Logic
             this.ActionsSchedule[actionSchedule] = false;
 
             ActionDefinition actionDefinition = this.ActionsDefinitions[actionSchedule.ActionName];
-            string url = this.ServiceUrlProvider.GetUrl(eService.LifxWebApi, actionDefinition.Url);
-
+            string fullUrl = GetFullUrl(actionDefinition);
             var actionModel = new ActionModel
             {
-                FullUrl = string.Concat(url, actionDefinition.Params),
+                Name = actionSchedule.ActionName,
+                FullUrl = fullUrl,
+                Time = actionSchedule.Time,
+                DayOfWeek = actionSchedule.Day,
+                Active = true,
             };
             return actionModel;
+        }
+
+        private string GetFullUrl(ActionDefinition actionDefinition)
+        {
+            string url = this.ServiceUrlProvider.GetUrl(eService.LifxWebApi, actionDefinition.Url);
+            string fullUrl = string.Concat(url, actionDefinition.Params);
+            return fullUrl;
+        }
+
+        public ScheduleModel GetFullSchedule()
+        {
+            var actionModels = new List<ActionModel>();
+            foreach (KeyValuePair<string, ActionDefinition> actionDefinition in this.ActionsDefinitions)
+            {
+                IEnumerable<KeyValuePair<ActionSchedule, bool>> scheduleOfAction = this.ActionsSchedule.Where(x => x.Key.ActionName == actionDefinition.Key);
+                foreach (KeyValuePair<ActionSchedule, bool> actionSchedule in scheduleOfAction)
+                {
+                    var actionModel = new ActionModel
+                    {
+                        Name = actionDefinition.Key,
+                        FullUrl = GetFullUrl(actionDefinition.Value),
+                        Time = actionSchedule.Key.Time,
+                        DayOfWeek = actionSchedule.Key.Day,
+                        Active = actionSchedule.Value,
+                    };
+                    actionModels.Add(actionModel);
+                }
+            }
+            var schedule = new ScheduleModel
+            {
+                Actions = actionModels,
+            };
+            return schedule;
         }
 
         public void SetCurrentActionState(eActionState success)
