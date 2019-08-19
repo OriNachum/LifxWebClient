@@ -121,7 +121,7 @@ namespace ActionService.Logic
             return Enum.GetNames(typeof(eLifxWebApiUrl));
         }
 
-        public bool CreateAction(string name, string supportedAction, string urlParameters)
+        public bool DefineAction(string name, string supportedAction, string urlParameters)
         {
             if (Enum.TryParse(supportedAction, out eLifxWebApiUrl supportedActionCode))
             {
@@ -131,7 +131,17 @@ namespace ActionService.Logic
                     Params = urlParameters,
                 };
 
-                this.ActionsDefinitions.Add(name, actionDefinition);
+                Logger.Information($"ActionProvider - DefineAction - adding actionDefinition { actionDefinition } to memory");
+                try
+                {
+                    this.ActionsDefinitions.Add(name, actionDefinition);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Information($"ActionProvider - DefineAction - adding actionDefinition { actionDefinition } to memory failed. Ex: { ex }");
+                    return false;
+                }
+                Logger.Information($"ActionProvider - DefineAction - added actionDefinition { actionDefinition } to memory");
 
                 SaveActionsDefinitions();
 
@@ -143,12 +153,23 @@ namespace ActionService.Logic
 
         public void ScheduleAction(string actionName, DateTime timeToRun, DayOfWeek? dayOfweek)
         {
-            this.ActionsSchedule.Add(new ActionSchedule
+            Logger.Information($"ActionProvider - ScheduleAction - adding action { actionName } to memory");
+
+            try
             {
-                ActionName = actionName,
-                Time = timeToRun,
-                Day = dayOfweek,
-            }, true);
+                this.ActionsSchedule.Add(new ActionSchedule
+                {
+                    ActionName = actionName,
+                    Time = timeToRun,
+                    Day = dayOfweek,
+                }, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Information($"ActionProvider - ScheduleAction - adding action { actionName } to memory failed. Ex { ex }");
+            }
+
+            Logger.Information($"ActionProvider - ScheduleAction - added { actionName } to schedule in memory");
 
             this.SaveActionsSchedule();
         }
@@ -174,32 +195,80 @@ namespace ActionService.Logic
         }
         private void LoadActionsDefinitions()
         {
-            string fileContent = File.ReadAllText(ActionsDefinitionsFilePath);
-            this.ActionsDefinitions = JsonConvert.DeserializeObject<Dictionary<string, ActionDefinition>>(fileContent);
+            Logger.Information($"ActionProvider - LoadActionsDefinitions - loading actionDefinitions");
+
+            try
+            {
+                string fileContent = File.ReadAllText(ActionsDefinitionsFilePath);
+                this.ActionsDefinitions = JsonConvert.DeserializeObject<Dictionary<string, ActionDefinition>>(fileContent);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"ActionProvider - LoadActionsDefinitions - loading actionDefinitions failed. ex: { ex }");
+                return;
+            }
+
+            Logger.Information($"ActionProvider - LoadActionsDefinitions - loaded actionDefinitions");
         }
 
         private void SaveActionsDefinitions()
         {
-            string fileContent = JsonConvert.SerializeObject(this.ActionsDefinitions);
-            File.WriteAllText(ActionsDefinitionsFilePath, fileContent);
+            Logger.Information($"ActionProvider - SaveActionsDefinitions - saving actionDefinitions");
+
+            try
+            {
+                string fileContent = JsonConvert.SerializeObject(this.ActionsDefinitions);
+                File.WriteAllText(ActionsDefinitionsFilePath, fileContent);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"ActionProvider - SaveActionsDefinitions - saving actionDefinitions failed. ex: { ex }");
+                return;
+            }
+
+            Logger.Information($"ActionProvider - SaveActionsDefinitions - saved actionDefinitions");
         }
 
         private void LoadActionsSchedule()
         {
-            this.ActionsSchedule = new Dictionary<ActionSchedule, bool>();
-            string fileContent = File.ReadAllText(ActionsScheduleFilePath);
-            KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = JsonConvert.DeserializeObject<KeyValuePair<ActionSchedule, bool>[]>(fileContent);
-            foreach (var record in actionsScheduleArray)
+            Logger.Information($"ActionProvider - LoadActionsSchedule - loading actionsSchedule");
+
+            try
             {
-                this.ActionsSchedule.Add(record.Key, record.Value);
+                this.ActionsSchedule = new Dictionary<ActionSchedule, bool>();
+                string fileContent = File.ReadAllText(ActionsScheduleFilePath);
+                KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = JsonConvert.DeserializeObject<KeyValuePair<ActionSchedule, bool>[]>(fileContent);
+                foreach (var record in actionsScheduleArray)
+                {
+                    this.ActionsSchedule.Add(record.Key, record.Value);
+                }
             }
+            catch (Exception ex)
+            {
+                Logger.Error($"ActionProvider - LoadActionsSchedule - loading actionsSchedule failed. ex: { ex }");
+                return;
+            }
+
+            Logger.Information($"ActionProvider - LoadActionsSchedule - loaded actionsSchedule");
         }
 
         private void SaveActionsSchedule()
         {
-            KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = this.ActionsSchedule.ToArray();
-            string fileContent = JsonConvert.SerializeObject(actionsScheduleArray);
-            File.WriteAllText(ActionsScheduleFilePath, fileContent);
+            Logger.Information($"ActionProvider - SaveActionsSchedule - saving actionsSchedule");
+
+            try
+            {
+                KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = this.ActionsSchedule.ToArray();
+                string fileContent = JsonConvert.SerializeObject(actionsScheduleArray);
+                File.WriteAllText(ActionsScheduleFilePath, fileContent);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"ActionProvider - SaveActionsSchedule - saving actionsSchedule failed. ex: { ex }");
+                return;
+            }
+
+            Logger.Information($"ActionProvider - SaveActionsSchedule - saved actionsSchedule");
         }
 
         private void ResetOlderActions()
@@ -220,10 +289,18 @@ namespace ActionService.Logic
 
         private void ResetActions(IEnumerable<DayOfWeek> daysToIgnore)
         {
+            var oneTimeActions = this.ActionsSchedule.Where(x => !x.Value)
+                .Where(x => !x.Key.Day.HasValue)
+                .Select(x => x.Key).ToList();
+            foreach (ActionSchedule actionSchedule in oneTimeActions)
+            {
+                this.ActionsSchedule.Remove(actionSchedule);
+            }
+
             var repeatableDays = this.ActionsSchedule.Where(x => !x.Value)
                 .Where(x => x.Key.Day.HasValue)
                 .Where(x => !daysToIgnore.Contains(x.Key.Day.Value))
-                .Select(x => x.Key);
+                .Select(x => x.Key).ToList();
             foreach (ActionSchedule actionSchedule in repeatableDays)
             {
                 this.ActionsSchedule[actionSchedule] = true;

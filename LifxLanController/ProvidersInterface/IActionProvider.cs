@@ -12,7 +12,7 @@ namespace ProvidersInterface
         ScheduleModel GetFullSchedule();
         IEnumerable<string> GetActions();
         IEnumerable<string> GetSupportedActions();
-        bool CreateAction(string name, string supportedAction, string parameters);
+        bool DefineAction(string name, string supportedAction, string parameters);
 
         void ScheduleAction(string actionName, DateTime timeToRun, DayOfWeek? dayOfweek);
     }

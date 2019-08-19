@@ -87,14 +87,25 @@ namespace Bishop.Engine
             // IActionProvider actionProvider = _actionProvider;
             using (var client = this.HttpClientFactory.CreateClient())
             {
-                HttpResponseMessage response = await client.GetAsync(GetNextActionUrl);
-                if (!response.IsSuccessStatusCode)
+                var request = GetNextActionUrl;
+                Logger.Debug($"BishopEngine - NextCycleAction - httpClient Request { request}");
+                try
                 {
-                    Logger.Error($"BishopEngine - NextCycleAction - Error in request for next action. response: {response}");
-                    return;
+                    HttpResponseMessage response = await client.GetAsync(request);
+                    Logger.Debug($"BishopEngine - NextCycleAction - httpClient response { response}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Logger.Error($"BishopEngine - NextCycleAction - Error in request for next action. request: { request } response: {response}");
+                        return;
+                    }
+                    string responseString = await response.Content.ReadAsStringAsync();
+                    model = JsonConvert.DeserializeObject<ActionModel>(responseString);
                 }
-                string responseString = await response.Content.ReadAsStringAsync();
-                model = JsonConvert.DeserializeObject<ActionModel>(responseString);
+                catch (Exception ex)
+                {
+                    Logger.Error($"BishopEngine - NextCycleAction - Error with httpClinet {ex}");
+                }
             }
 
             if (model == null)

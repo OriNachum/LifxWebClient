@@ -13,12 +13,10 @@ namespace Infrared.Enums
         RefreshBulb,
         Off,
         On,
-        Brightness,
-        Color,
         Label,
         SetPower,
-        Temperature,
-        FadeToState,
+        SetTemperature,
         SetBrightness,
+        SetColor,
     }
 }
