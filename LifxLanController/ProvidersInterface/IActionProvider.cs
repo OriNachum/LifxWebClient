@@ -15,5 +15,7 @@ namespace ProvidersInterface
         bool DefineAction(string name, string supportedAction, string parameters);
 
         void ScheduleAction(string actionName, DateTime timeToRun, DayOfWeek? dayOfweek);
+        bool DeleteScheduledAction(int id);
+        bool ModifyScheduledAction(ActionModel deserializedModel);
     }
 }

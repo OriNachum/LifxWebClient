@@ -106,5 +106,29 @@ namespace ActionService.Controllers
             Logger.Error($"ActionController - ScheduleAction - failed parsing dateTime {timeToRun} for action { name }.");
             return new ActionResult<string>("Fail");
         }
+
+        // api/Action/GetSchedule
+        [HttpGet("DeleteScheduledAction")]
+        public ActionResult<string> DeleteScheduledAction(int id)
+        {
+            Logger.Information($"ActionController - DeleteScheduledAction - requested to modify action { id }");
+            bool success = this.ActionProvider.DeleteScheduledAction(id);
+            //var serializedResult = success ? "Success" : "Fail";
+            //Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
+            return new ActionResult<string>("");
+        }
+
+        // api/Action/GetSchedule
+        [HttpGet("ModifyScheduledAction")]
+        public ActionResult<string> ModifyScheduledAction(string actionModel)
+        {
+            Logger.Information($"ActionController - ModifyScheduledAction - requested to modify action { actionModel }");
+
+            ActionModel deserializedModel =JsonConvert.DeserializeObject<ActionModel>(actionModel);
+            bool success = this.ActionProvider.ModifyScheduledAction(deserializedModel);
+            // var serializedResult = success ? "Success" : "Fail";
+            // Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
+            return new ActionResult<string>("");
+        }
     }
 }

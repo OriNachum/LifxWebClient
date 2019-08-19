@@ -41,11 +41,11 @@ namespace ActionService.Logic
 
             // InitializeArraysHardCoded();
 
-            // SaveActionsSchedule();
-            LoadActionsSchedule();
-
             // SaveActionsDefinitions();
             LoadActionsDefinitions();
+
+            // SaveActionsSchedule();
+            LoadActionsSchedule();
 
             ResetActions();
         }
@@ -94,6 +94,7 @@ namespace ActionService.Logic
                 {
                     var actionModel = new ActionModel
                     {
+                        Id = actionSchedule.Key.Id,
                         Name = actionDefinition.Key,
                         FullUrl = GetFullUrl(actionDefinition.Value),
                         Time = actionSchedule.Key.Time,
@@ -159,10 +160,11 @@ namespace ActionService.Logic
             {
                 this.ActionsSchedule.Add(new ActionSchedule
                 {
+                    Id = this.ActionsSchedule.Select(x => x.Key.Id).Max() + 1,
                     ActionName = actionName,
                     Time = timeToRun,
                     Day = dayOfweek,
-                }, true);
+                }, true); ; ;
             }
             catch (Exception ex)
             {
@@ -172,6 +174,49 @@ namespace ActionService.Logic
             Logger.Information($"ActionProvider - ScheduleAction - added { actionName } to schedule in memory");
 
             this.SaveActionsSchedule();
+        }
+
+        public bool DeleteScheduledAction(int id)
+        {
+            Logger.Information($"ActionProvider - DeleteScheduledAction - removing action { id } from schedule in memory");
+
+            ActionSchedule actionSchedule = this.ActionsSchedule.Select(x => x.Key).Where(x => x.Id == id).FirstOrDefault();
+            if (actionSchedule == null)
+            {
+                Logger.Error($"ActionProvider - DeleteScheduledAction - did not find scheduledAction { id } in memory");
+                return false;
+            }
+
+            this.ActionsSchedule.Remove(actionSchedule);
+
+            Logger.Information($"ActionProvider - DeleteScheduledAction - removed action { id } from schedule in memory");
+
+            SaveActionsSchedule();
+
+            return true;
+        }
+
+        public bool ModifyScheduledAction(ActionModel actionModel)
+        {
+            Logger.Information($"ActionProvider - ModifyScheduledAction - modifying action { actionModel } from schedule in memory");
+
+            ActionSchedule actionSchedule = this.ActionsSchedule.Select(x => x.Key).Where(x => x.Id == actionModel.Id).FirstOrDefault();
+            if (actionSchedule == null)
+            {
+                Logger.Error($"ActionProvider - ModifyScheduledAction - did not find scheduledAction { actionModel } in memory");
+                return false;
+            }
+
+            actionSchedule.ActionName = actionModel.Name;
+            actionSchedule.Day = actionModel.DayOfWeek;
+            actionSchedule.Time = actionModel.Time;
+            this.ActionsSchedule[actionSchedule] = actionModel.Active;
+
+            Logger.Information($"ActionProvider - ModifyScheduledAction - modified action { actionModel } from schedule in memory");
+
+            SaveActionsSchedule();
+
+            return true;
         }
         #endregion
 
@@ -183,6 +228,7 @@ namespace ActionService.Logic
         {
             this.ActionsSchedule.Add(new ActionSchedule
             {
+                Id = this.ActionsSchedule.Select(x => x.Key.Id).Max() + 1,
                 ActionName = actionName,
                 Time = timeToRun,
                 Day = dayOfweek,
@@ -240,6 +286,7 @@ namespace ActionService.Logic
                 KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = JsonConvert.DeserializeObject<KeyValuePair<ActionSchedule, bool>[]>(fileContent);
                 foreach (var record in actionsScheduleArray)
                 {
+                    record.Key.Id = this.ActionsSchedule.Count() + 1;
                     this.ActionsSchedule.Add(record.Key, record.Value);
                 }
             }
@@ -355,6 +402,7 @@ namespace ActionService.Logic
             {
                 var actionSchedule = new ActionSchedule
                 {
+                    Id = this.ActionsSchedule.Select(x => x.Key.Id).Max() + 1,
                     Day = dayOfWeek,
                     Time = actionDayTime,
                     ActionName = actionStartFadeInName,

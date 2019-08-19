@@ -6,6 +6,9 @@ namespace ActionService.Models
     [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     public class ActionSchedule
     {
+        [JsonProperty("Id")]
+        public int Id { get; set; }
+
         [JsonProperty("Day")]
         public DayOfWeek? Day { get; set; }
         [JsonProperty("Time")]
