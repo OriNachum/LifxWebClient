@@ -58,7 +58,7 @@ namespace LifxCoreControllerTest
             {
                 // Act
                 await server.DetectLightsAsync(cts.Token);
-                IAdvancedBulb light = server.Bulbs.Values
+                IBulb light = server.Bulbs.Values
                     .Where(x => x.Label == "Television")
                     .FirstOrDefault();
                 Assert.NotNull(light);

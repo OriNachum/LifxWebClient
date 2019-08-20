@@ -25,6 +25,8 @@ namespace Bishop.Service
                 serviceCollection.AddHttpClient();
                 Services = serviceCollection.BuildServiceProvider();
             }
+
+            _logger = Services.GetService<ILogger>();
         }
 
         IBishopEngine BishopEngine;

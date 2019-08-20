@@ -204,7 +204,7 @@ namespace LifxCoreController
 
             try
             {
-                IAdvancedBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                IBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
                 if (bulb == null)
                 {
                     Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");
@@ -234,7 +234,7 @@ namespace LifxCoreController
 
             try
             {
-                IAdvancedBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                IBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
                 if (bulb == null)
                 {
                     Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");
@@ -260,7 +260,7 @@ namespace LifxCoreController
 
             try
             {
-                IAdvancedBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                IBulb bulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
                 if (bulb == null)
                 {
                     Logger.Information($"LifxApi - SetStateOverTimeAsync could not find bulb: { label };");

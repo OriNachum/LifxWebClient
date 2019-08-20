@@ -83,7 +83,7 @@ namespace LifxCoreController
                 }
                 var scanTasks = new List<Task>();
                 await ScanExistingIps(lightFactory, allIpsInNetwork, scanTasks, cancellationToken);
-                await GetAllLightsStates(cancellationToken);
+                await GetAllCollectedLightsStates(cancellationToken);
             }
             finally
             {
@@ -94,14 +94,30 @@ namespace LifxCoreController
             }
         }
 
-        private async Task GetAllLightsStates(CancellationToken cancellationToken)
+        private async Task GetAllCollectedLightsStates(CancellationToken cancellationToken)
         {
-            var getStateTasks = new List<Task<LightState>>();
+            var getStateTasks = new List<Task<(string label, LightState? state)>>();
             foreach (Bulb light in Bulbs.Values)
             {
-                getStateTasks.Add(light.GetStateAsync());
+                getStateTasks.Add(GetLightStateAsync(light));
             }
-            await Task.WhenAll(getStateTasks);
+            var labelStates = await Task.WhenAll(getStateTasks);
+            IEnumerable<string> labelsOfFailedStates = labelStates.Where(x => x.state == null)
+                                                                  .Select(x => x.label)
+                                                                  .ToList();
+            IEnumerable<IPAddress> ipsOfFailedBulbs = _bulbs.Where(x => labelsOfFailedStates.Contains(x.Value.Label))
+                                                            .Select(x => x.Key)
+                                                            .ToList();
+            foreach (IPAddress ip in ipsOfFailedBulbs)
+            {
+                Logger.Information($"LifxDetector - GetAllCollectedLightsStates - sadly, { ip } is no longer with us.");
+                _bulbs.Remove(ip);
+            }
+        }
+
+        private static async Task<(string label, LightState? state)> GetLightStateAsync(Bulb light)
+        {
+            return (light.Label, await light.GetStateAsync());
         }
 
         private bool CheckAndWaitIfAnotherDetectionStarted()
@@ -189,9 +205,7 @@ namespace LifxCoreController
                 {
                     if (state.HasValue && !_bulbs.ContainsKey(candidateIpAddress))
                     {
-                        var bulbLogger = new LoggerConfiguration()
-                        .WriteTo.File($"C:\\Logs\\LifxWebApi\\{ state.Value.Label.Value }.log", shared: true)
-                        .CreateLogger();
+                        var bulbLogger = new BulbLogger($"C:\\Logs\\LifxWebApi\\{ state.Value.Label.Value }.log");
 
                         var lightBulb = new AdvancedBulb(light, state.Value, bulbLogger);
                         _bulbs.Add(candidateIpAddress, lightBulb);

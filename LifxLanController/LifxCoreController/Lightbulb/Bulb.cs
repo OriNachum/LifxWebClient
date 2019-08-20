@@ -15,7 +15,7 @@ namespace LifxCoreController.Lightbulb
     public class Bulb : IBulb
     {
         [JsonIgnore]
-        public ILight Light { get; }
+        public ILight Light { get; private set; }
 
         public string Label { get; private set; }
 
@@ -137,8 +137,17 @@ namespace LifxCoreController.Lightbulb
         }
         #endregion
 
+        #region IBulb
+        public async Task ResetBulbAsync()
+        {
+            var address = this.Light.Address;
+            this.Light.Dispose();
+            this.Light = await new LightFactory().CreateLightAsync(address);
+        } 
+        #endregion
+
         #region ILight
-        public async Task<LightState> GetStateAsync()
+        public async Task<LightState?> GetStateAsync()
         {
             using (var cts = new CancellationTokenSource())
             {
@@ -146,7 +155,7 @@ namespace LifxCoreController.Lightbulb
             }
         }
 
-        public async Task<LightState> GetStateAsync(CancellationToken cancellationToken)
+        public async Task<LightState?> GetStateAsync(CancellationToken cancellationToken)
         {
             using (var cts = new CancellationTokenSource())
             {
@@ -165,8 +174,9 @@ namespace LifxCoreController.Lightbulb
                     }
                     catch (OperationCanceledException ex)
                     {
-                        Logger.Error($"LifxBulb - GetStatAsync - operation was canceled. Last verified state: { this.LastVerifiedState }");
-                        return this.LastVerifiedState.HasValue ? this.LastVerifiedState.Value : new LightState();
+                        Logger.Error($"LifxBulb - GetStatAsync - operation was canceled. Last verified state: { this.LastVerifiedState }.");
+                        Logger.Error($"LifxBulb - GetStatAsync - operation was canceled. Exception: { ex }.");
+                        return null;
                     }
                 }
             }

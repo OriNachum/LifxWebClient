@@ -10,8 +10,9 @@ namespace LifxCoreController.Lightbulb
         IBulbState State { get; }
 
         string Serialize();
+        Task ResetBulbAsync();
 
-        Task<LightState> GetStateAsync(CancellationToken token);
+        Task<LightState?> GetStateAsync(CancellationToken token);
         Task OnAsync();
         Task OnAsync(uint durationInMilliseconds);
         Task OffAsync();
