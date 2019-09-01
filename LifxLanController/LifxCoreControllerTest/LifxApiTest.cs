@@ -52,39 +52,41 @@ namespace LifxCoreControllerTest
         public async Task LightBulbFadeIn_Success()
         {
             // Assign
-            var cts = new CancellationTokenSource();
-            var knownIp = new IPAddress(new byte[] { 10, 0, 0, 4 });
-            using (var server = new LifxDetector(_logger))
+            using (var cts = new CancellationTokenSource())
             {
-                // Act
-                await server.DetectLightsAsync(cts.Token);
-                IBulb light = server.Bulbs.Values
-                    .Where(x => x.Label == "Television")
-                    .FirstOrDefault();
-                Assert.NotNull(light);
-                // foreach (ILight light in server.Bulbs.Values)
+                var knownIp = new IPAddress(new byte[] { 10, 0, 0, 4 });
+                using (var server = new LifxDetector(_logger))
                 {
-                    uint second = 1000;
-                    uint minute = second * 60;
-                    uint minutes = minute * 10;
+                    // Act
+                    await server.DetectLightsAsync(cts.Token);
+                    IBulb light = server.Bulbs.Values
+                        .Where(x => x.Label == "Television")
+                        .FirstOrDefault();
+                    Assert.NotNull(light);
+                    // foreach (ILight light in server.Bulbs.Values)
+                    {
+                        uint second = 1000;
+                        uint minute = second * 60;
+                        uint minutes = minute * 10;
 
-                    Power newPower = (light.State.Power.Value == Power.On) ? Power.Off : Power.On;
-                    Percentage newBrightness = 0.01;
+                        Power newPower = (light.State.Power.Value == Power.On) ? Power.Off : Power.On;
+                        Percentage newBrightness = 0.01;
 
-                    //await light.SetPowerAsync(newPower, second);
-                    await light.SetBrightnessAsync(newBrightness, second);
-                    //if (light.State.Power.Value == Power.Off)
-                    //{
-                    //    await light.OnAsync(minutes);
-                    //}
-                    //else
-                    //{
-                    //    await light.OffAsync(minutes);
-                    //}
+                        //await light.SetPowerAsync(newPower, second);
+                        await light.SetBrightnessAsync(newBrightness, second);
+                        //if (light.State.Power.Value == Power.Off)
+                        //{
+                        //    await light.OnAsync(minutes);
+                        //}
+                        //else
+                        //{
+                        //    await light.OffAsync(minutes);
+                        //}
+                    }
+
+                    // Assert
+                    Assert.True(server.Bulbs.Count > 0);
                 }
-
-                // Assert
-                Assert.True(server.Bulbs.Count > 0);
             }
         }
     }

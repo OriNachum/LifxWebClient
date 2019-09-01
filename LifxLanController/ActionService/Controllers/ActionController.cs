@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ActionService.Logic;
 using Infrared;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using ProvidersInterface;
@@ -12,6 +13,7 @@ using Serilog;
 
 namespace ActionService.Controllers
 {
+    [EnableCors("SiteCorsPolicy")]
     [Route("api/[controller]")]
     [ApiController]
     public class ActionController : ControllerBase
@@ -38,14 +40,16 @@ namespace ActionService.Controllers
         }
 
         // api/Action/GetSchedule
+        [EnableCors("SiteCorsPolicy")]
         [HttpGet("GetSchedule")]
         public ActionResult<string> GetSchedule()
         {
             Logger.Information("ActionController - GetSchedule - full schedule requested");
             ScheduleModel schedule = this.ActionProvider.GetFullSchedule();
             var serializedschedule = JsonConvert.SerializeObject(schedule);
-
-            return new ActionResult<string>(serializedschedule);
+            var result = new ActionResult<string>(serializedschedule);
+            
+            return result;
         }
 
         // api/Action/GetSchedule
@@ -115,7 +119,7 @@ namespace ActionService.Controllers
             bool success = this.ActionProvider.DeleteScheduledAction(id);
             //var serializedResult = success ? "Success" : "Fail";
             //Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
-            return new ActionResult<string>("");
+            return new ActionResult<string>(success.ToString());
         }
 
         // api/Action/GetSchedule
@@ -128,7 +132,7 @@ namespace ActionService.Controllers
             bool success = this.ActionProvider.ModifyScheduledAction(deserializedModel);
             // var serializedResult = success ? "Success" : "Fail";
             // Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
-            return new ActionResult<string>("");
+            return new ActionResult<string>(success.ToString());
         }
     }
 }

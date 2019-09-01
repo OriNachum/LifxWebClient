@@ -4,9 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Bishop.Service
+namespace VueLifxServer.Service
 {
-    public class BishopServiceConfiguration : IConfiguration
+    public class BaseServiceConfiguration : IConfiguration
     {
         public string this[string key] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 

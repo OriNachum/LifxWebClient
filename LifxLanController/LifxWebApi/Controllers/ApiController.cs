@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using Infrared.Enums;
 using Lifx;
 using LifxCoreController;
 using LifxCoreController.Lightbulb;
@@ -15,6 +14,7 @@ using Serilog;
 
 namespace LifxWebApi.Controllers
 {
+    [EnableCors("SiteCorsPolicy")]
     [Route("Lifx/[controller]")]
     [ApiController]
     public class ApiController : ControllerBase
@@ -116,7 +116,7 @@ namespace LifxWebApi.Controllers
             Logger.Information($"ApiController - SetOffAsync - label: { label }; overtime: { overtime }");
 
             var (response, data, bulb) = await this.Lifx.OffAsync(label, 0);
-            return new { responseType = 0, responseData = data, bulb };
+            return new { responseType = (int)response, responseData = data, bulb };
         }
 
         // GET api/values/5

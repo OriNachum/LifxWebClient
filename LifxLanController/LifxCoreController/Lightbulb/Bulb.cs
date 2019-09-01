@@ -4,6 +4,7 @@ using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -140,6 +141,8 @@ namespace LifxCoreController.Lightbulb
         #region IBulb
         public async Task ResetBulbAsync()
         {
+            var stackTrace = new StackTrace();
+            this.Logger.Error($"Bulb - ResetBulbAsync - Resetting bulb, stacktrace: { stackTrace.ToString() }");
             var address = this.Light.Address;
             this.Light.Dispose();
             this.Light = await new LightFactory().CreateLightAsync(address);

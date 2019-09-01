@@ -47,20 +47,24 @@ namespace LifxCoreController
 
         public async Task<(eLifxResponse response, string data, string bulb)> RefreshBulbAsync(string label)
         {
-            var cts = new CancellationTokenSource();
-            Logger.Information($"LifxApi - RefreshBulbAsync started light: { label }; ");
+            using (var cts = new CancellationTokenSource())
+            {
+                Logger.Information($"LifxApi - RefreshBulbAsync started light: { label }; ");
 
-            IBulb lightBulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
-            await lightBulb.GetStateAsync(cts.Token);
+                IBulb lightBulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
+                await lightBulb.GetStateAsync(cts.Token);
 
-            string bulb = lightBulb.Serialize();
-            return (eLifxResponse.Success, "", bulb);
+                string bulb = lightBulb.Serialize();
+                return (eLifxResponse.Success, "", bulb);
+            }
         }
 
         public async Task<(eLifxResponse response, string data)> RefreshBulbsAsync()
         {
-            var cts = new CancellationTokenSource();
-            return await RefreshBulbsAsync(cts.Token);
+            using (var cts = new CancellationTokenSource())
+            {
+                return await RefreshBulbsAsync(cts.Token);
+            }
         }
 
         public async Task<(eLifxResponse response, string data)> RefreshBulbsAsync(CancellationToken token)
@@ -124,7 +128,7 @@ namespace LifxCoreController
                 var (response, message) = await RefreshBulbsAsync();
                 if (!response.Equals(eLifxResponse.Success))
                 {
-                    return (response, "Could not fetch bulbs");
+                    return (response, message);
                 }
             }
             string bulbs = JsonConvert.SerializeObject(Bulbs.Values);

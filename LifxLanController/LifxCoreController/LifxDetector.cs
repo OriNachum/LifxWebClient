@@ -318,12 +318,14 @@ namespace LifxCoreController
         {
             var neighbourIps = new List<IPAddress>();
 
-            var pinger = new Ping();
-            PingReply rep = await pinger.SendPingAsync("10.0.0.1");
-            if (rep.Status == IPStatus.Success)
-            {
-                //host is active
-            }
+            //using (var pinger = new Ping())
+            //{
+            //    PingReply rep = await pinger.SendPingAsync("10.0.0.1");
+            //    if (rep.Status == IPStatus.Success)
+            //    {
+            //        //host is active
+            //    }
+            //}
 
             string ipBase = "10.0.0."; //"192.168.1.";
             string dhcpServerIp = ipBase + "1";

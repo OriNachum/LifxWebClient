@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Infrared;
 using LifxCoreController;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Cors.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -26,16 +28,36 @@ namespace LifxWebApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
+            services.AddCors(options =>
+            {
+                options.AddPolicy(CorsPolicy.Name,
+                builder =>
+                {
+                    builder.AllowAnyHeader();
+                    builder.AllowAnyMethod();
+                    builder.AllowAnyOrigin();
+                    //builder.SetIsOriginAllowed(origin => true); // For anyone access.
+                                              //corsBuilder.WithOrigins("http://localhost:56573"); // for a specific url. Don't add a forward slash on the end!
+                    // builder.AllowCredentials(); No AnyOrigin with Credentials
+                    // builder.WithOrigins(CorsPolicy.AllowedSources);
+                });
+            });
+            services.Configure<MvcOptions>(options =>
+            {
+                options.Filters.Add(new CorsAuthorizationFilterFactory("SiteCorsPolicy"));
+            });
+
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddSingleton<ILifxApi, LifxApi>();
             services.AddSingleton<ILogger, LifxWebApiServiceLogger>();
-            // services.AddCors();
+
             return services.BuildServiceProvider();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            app.UseCors(CorsPolicy.Name);
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -51,6 +73,7 @@ namespace LifxWebApi
 
         public void Configure(IApplicationBuilder app)
         {
+            app.UseCors(CorsPolicy.Name);
             app.UseHsts();
             app.UseHttpsRedirection();
             app.UseMvc();

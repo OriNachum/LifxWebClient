@@ -51,8 +51,8 @@ namespace LifxCoreControllerTest
         {
             // Assign
             using (var server = new LifxDetector(_logger))
+            using (var cancellationTokenSource = new CancellationTokenSource())
             {
-                var cancellationTokenSource = new CancellationTokenSource();
                 // Act
                 await server.DetectLightsAsync(cancellationTokenSource.Token);
 

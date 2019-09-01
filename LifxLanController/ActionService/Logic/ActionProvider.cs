@@ -1,14 +1,6 @@
-﻿using ProvidersInterface.Enums;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using Microsoft.Extensions.Http;
 using System.IO;
-using System.Net.Http.Headers;
-using Microsoft.Extensions.DependencyInjection;
-using System.Threading.Tasks;
-using LifxCoreController.Lightbulb;
 using Newtonsoft.Json;
 using System.Linq;
 using Serilog;
