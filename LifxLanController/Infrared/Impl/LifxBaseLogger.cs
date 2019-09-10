@@ -3,15 +3,34 @@ using Serilog.Core;
 using Serilog.Events;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Infrared.Impl
 {
     public abstract class LifxBaseLogger : ILogger
     {
-        protected virtual string FilePath
+        protected virtual string FileName
         {
             get;
+        }
+
+        protected string FilePath
+        {
+            get
+            {
+
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    return $"C:\\Logs\\LifxWebApi\\{ this.FileName }";
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    return $"/etc/logs/{ this.FileName }";
+                }
+                return this.FileName;
+            }
+            
         }
 
         ILogger _logger;

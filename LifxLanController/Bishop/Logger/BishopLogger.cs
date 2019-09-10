@@ -11,11 +11,11 @@ namespace Bishop.Logger
 {
     public class BishopLogger : LifxBaseLogger
     {
-        protected override string FilePath
+        protected override string FileName
         {
             get
             {
-                return $"C:\\Logs\\LifxWebApi\\BishopController.log";
+                return $"BishopController.log";
             }
         }
     }

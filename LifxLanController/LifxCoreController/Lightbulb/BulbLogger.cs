@@ -1,18 +1,15 @@
 ﻿using Infrared.Impl;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LifxCoreController.Lightbulb
 {
     public class BulbLogger : LifxBaseLogger
     {
-        private string _filePath;
+        private string _fileName;
 
-        protected override string FilePath => _filePath;
-        public BulbLogger(string filePath)
+        protected override string FileName => _fileName;
+        public BulbLogger(string bulbName)
         {
-            _filePath = filePath;
+            _fileName = $"{ bulbName }.log";
         }
     }
 }

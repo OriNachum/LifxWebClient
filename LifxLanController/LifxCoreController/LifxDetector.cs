@@ -205,7 +205,7 @@ namespace LifxCoreController
                 {
                     if (state.HasValue && !_bulbs.ContainsKey(candidateIpAddress))
                     {
-                        var bulbLogger = new BulbLogger($"C:\\Logs\\LifxWebApi\\{ state.Value.Label.Value }.log");
+                        var bulbLogger = new BulbLogger(state.Value.Label.Value);
 
                         var lightBulb = new AdvancedBulb(light, state.Value, bulbLogger);
                         _bulbs.Add(candidateIpAddress, lightBulb);

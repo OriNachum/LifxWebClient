@@ -4,11 +4,11 @@ namespace ActionService
 {
     public class ActionServiceLogger : LifxBaseLogger
     {
-        protected override string FilePath
+        protected override string FileName
         {
             get
             {
-                return $"C:\\Logs\\LifxWebApi\\ActionController.log";
+                return $"ActionController.log";
             }
         }
     }

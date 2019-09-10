@@ -6,6 +6,7 @@ using Infrared;
 using LifxCoreController;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Cors.Internal;
@@ -57,6 +58,7 @@ namespace LifxWebApi
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            // app.UsePathBase(new PathString("/ActionService")); // Take from config file
             app.UseCors(CorsPolicy.Name);
             if (env.IsDevelopment())
             {
