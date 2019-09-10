@@ -19,7 +19,6 @@ namespace Infrared.Impl
         {
             get
             {
-
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
                     return $"C:\\Logs\\LifxWebApi\\{ this.FileName }";

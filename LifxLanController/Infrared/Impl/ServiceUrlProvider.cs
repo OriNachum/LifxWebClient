@@ -2,6 +2,7 @@
 using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Infrared.Impl
@@ -25,7 +26,8 @@ namespace Infrared.Impl
         }
 
         public ILogger Logger { get; }
-        public IDictionary<eService, string> Urls { get; set; }
+        public IDictionary<eService, string> Urls { get; }
+        public Dictionary<eService, int> LinuxHttpsPorts { get; }
 
         // string GetNextActionUrl = "https://ori/ActionService/api/Action";
         // "https://localhost:44306/api/Action/GetNextAction";
@@ -42,6 +44,12 @@ namespace Infrared.Impl
                 { eService.LifxWebApi, $"Lifx/Api" },
                 { eService.ActionService, $"api/Action" },
             };
+
+            this.LinuxHttpsPorts = new Dictionary<eService, int>
+            {
+                { eService.LifxWebApi, 5011 },
+                { eService.ActionService, 5021 },
+            };
         }
 
         public string GetUrl(eService service, string actionId)
@@ -52,7 +60,17 @@ namespace Infrared.Impl
                 return null;
             }
 
-            return $"{ActiveSite}/{service.ToString()}/{this.Urls[service]}/{actionId}";
+            string basePath = "";
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                basePath = $"{ ActiveSite }/{ service.ToString() }";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                basePath = $"{ ActiveSite }:{ this.LinuxHttpsPorts[service] }";
+            }
+
+            return $"{ basePath }/{this.Urls[service]}/{actionId}";
         }
     }
 }
