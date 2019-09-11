@@ -33,7 +33,7 @@ namespace ActionService.Logic
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                return $"/etc/lifx/{ fileName }";
+                return $"/home/pi/lifx/{ fileName }";
             }
             return fileName;
         }

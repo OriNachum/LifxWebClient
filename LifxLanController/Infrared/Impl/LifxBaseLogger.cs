@@ -25,7 +25,7 @@ namespace Infrared.Impl
                 }
                 else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
-                    return $"/etc/logs/{ this.FileName }";
+                    return $"/home/pi/logs/{ this.FileName }";
                 }
                 return this.FileName;
             }
