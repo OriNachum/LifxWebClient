@@ -18,15 +18,14 @@ namespace ActionService
     {
         public static void Main(string[] args)
         {
-            var urlProvider = new ServiceUrlProvider(null);
-            var httpsPort = urlProvider.LinuxHttpsPorts[eService.ActionService];
             IWebHostBuilder webHosterBuilder = CreateWebHostBuilder(args);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
+                var urlProvider = new ServiceUrlProvider(null);
+                var httpsPort = urlProvider.LinuxHttpsPorts[eService.ActionService];
                 webHosterBuilder.ConfigureKestrel((context, options) =>
                 {
-                    options.Listen(IPAddress.Loopback, httpsPort - 1);
-                    options.Listen(IPAddress.Loopback, httpsPort);
+                    options.Listen(IPAddress.Any, httpsPort);
                     // Set properties and call methods on options
                 });
             }

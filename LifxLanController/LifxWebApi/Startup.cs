@@ -49,6 +49,7 @@ namespace LifxWebApi
             });
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddHttpContextAccessor();
             services.AddSingleton<ILifxApi, LifxApi>();
             services.AddSingleton<ILogger, LifxWebApiServiceLogger>();
 
@@ -58,7 +59,6 @@ namespace LifxWebApi
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
-            // app.UsePathBase(new PathString("/ActionService")); // Take from config file
             app.UseCors(CorsPolicy.Name);
             if (env.IsDevelopment())
             {

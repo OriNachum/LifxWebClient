@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Infrared;
+using Microsoft.AspNetCore.Http;
 
 namespace LifxCoreController
 {
@@ -39,7 +40,7 @@ namespace LifxCoreController
             }
         }
 
-        public LifxApi(ILogger logger) : base(logger)
+        public LifxApi(IHttpContextAccessor httpContextAccessor, ILogger logger) : base(httpContextAccessor, logger)
         {
             _logger = logger;
             Task.Run(() => StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME));

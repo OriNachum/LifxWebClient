@@ -1,5 +1,6 @@
 ﻿using Lifx;
 using LifxCoreController.Lightbulb;
+using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 using Serilog;
 using System;
@@ -19,7 +20,7 @@ namespace LifxCoreController
     public class LifxDetector : ILifxDetector
     {
         object lightsLock = new object();
-
+        private IHttpContextAccessor httpContextAccessor;
         ILogger _logger = null;
 
         ILogger Logger
@@ -46,8 +47,9 @@ namespace LifxCoreController
             }
         }
 
-        public LifxDetector(ILogger logger)
+        public LifxDetector(IHttpContextAccessor httpContextAccessor, ILogger logger)
         {
+            this.httpContextAccessor = httpContextAccessor;
             _logger = logger;
             _bulbs = new ConcurrentDictionary<IPAddress, IAdvancedBulb>();
         }
@@ -268,8 +270,14 @@ namespace LifxCoreController
         {
             int port = 56700;
             var neighbourIps = new List<IPAddress>();
-            byte[] ipBase = new byte[4] { 10, 0, 0, 1 }; //{ 192, 168, 1, 1 };
-
+            // new byte[4] { 10, 0, 0, 1 }; //{ 192, 168, 1, 1 };
+            byte[] ipBase = httpContextAccessor.HttpContext.Connection.RemoteIpAddress.GetAddressBytes();
+            if (ipBase.First() == 127)
+            {
+                Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Looking for addresses in localhost, canceled");
+                return new List<IPAddress>();
+            }
+            Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Starts detecting lights for address family {httpContextAccessor.HttpContext.Connection.RemoteIpAddress.ToString()}");
             /*using (var pinger = new TcpClient())
             {
                 pinger.SendTimeout = 100;
