@@ -9,13 +9,42 @@ using ProvidersInterface.Models;
 using Infrared;
 using Infrared.Enums;
 using ActionService.Models;
+using System.Runtime.InteropServices;
 
 namespace ActionService.Logic
 {
     public class ActionProvider : IActionProvider
     {
-        private string ActionsScheduleFilePath = @"C:\LifxWebApi\ActionsSchedule.json";
-        private string ActionsDefinitionsFilePath = @"C:\LifxWebApi\ActionsDefinitions.json";
+        private const string ActionsScheduleFileName = "ActionsSchedule.json";
+        private const string ActionsDefinitionsFileName = @"ActionsDefinitions.json";
+        private string ActionsScheduleFilePath
+        {
+            get
+            {
+                return PrependConfigPath(ActionsScheduleFileName);
+            }
+        }
+
+        private string PrependConfigPath(string fileName)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return $"C:\\LifxWebApi\\{ fileName }";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return $"/etc/lifx/{ fileName }";
+            }
+            return fileName;
+        }
+
+        private string ActionsDefinitionsFilePath 
+        {
+            get
+            {
+                return PrependConfigPath(ActionsDefinitionsFileName);
+            }
+        }
 
         IDictionary<ActionSchedule, bool> ActionsSchedule;
         IDictionary<string, ActionDefinition> ActionsDefinitions;
