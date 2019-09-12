@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
-using System.Threading.Tasks;S
+using System.Threading.Tasks;
 
 namespace LifxCoreController.Api
 {
