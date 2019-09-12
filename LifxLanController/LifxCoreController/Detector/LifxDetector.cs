@@ -280,8 +280,11 @@ namespace LifxCoreController.Detector
             var neighbourIps = new List<IPAddress>();
             // new byte[4] { 10, 0, 0, 1 }; //{ 192, 168, 1, 1 };
             byte[] ipBase = HttpContextAccessor.HttpContext.Connection.RemoteIpAddress.GetAddressBytes();
-            if (string.IsNullOrEmpty(this.LifxDetectorConfiguration?.Value.IP))
+            Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - fetching IP from config");
+            if (!string.IsNullOrEmpty(this.LifxDetectorConfiguration?.Value.IP))
             {
+                Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - fetching IP from config { this.LifxDetectorConfiguration?.Value.IP }");
+
                 ipBase = this.LifxDetectorConfiguration?.Value.IP.Split('.')
                     .Select(x => byte.Parse(x))
                     .ToArray();
