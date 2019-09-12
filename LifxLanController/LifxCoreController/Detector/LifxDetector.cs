@@ -294,7 +294,8 @@ namespace LifxCoreController.Detector
                 Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Looking for addresses in localhost, canceled");
                 return new List<IPAddress>();
             }
-            Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Starts detecting lights for address family {HttpContextAccessor.HttpContext.Connection.RemoteIpAddress.ToString()}");
+            string ipBaseString = ipBase.Select(x => x.ToString()).Aggregate((x, y) => $"{ x }.{ y }");
+            Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Starts detecting lights for address family { ipBaseString }");
             /*using (var pinger = new TcpClient())
             {
                 pinger.SendTimeout = 100;
