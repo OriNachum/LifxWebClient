@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Lifx;
-using LifxCoreController;
+using LifxCoreController.Api;
 using LifxCoreController.Lightbulb;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
@@ -38,7 +38,7 @@ namespace LifxCoreControllerTest
         [Fact]
         public void CreateServerTest()
         {
-            var server = new LifxApi(_httpContextAccessor, _logger);
+            var server = new LifxApi(null, _httpContextAccessor, _logger);
             Assert.NotNull(server);
         }
 

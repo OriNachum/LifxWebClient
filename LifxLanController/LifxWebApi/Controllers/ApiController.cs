@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Lifx;
 using LifxCoreController;
+using LifxCoreController.Api;
 using LifxCoreController.Lightbulb;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;

@@ -6,7 +6,7 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using LifxCoreController;
+using LifxCoreController.Detector;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Serilog;
