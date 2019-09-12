@@ -49,7 +49,7 @@ namespace LifxWebApi
             {
                 options.Filters.Add(new CorsAuthorizationFilterFactory("SiteCorsPolicy"));
             });
-
+            services.AddOptions();
             services.Configure<LifxDetectorConfiguration>(Configuration.GetSection("LifxDetector"));
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddHttpContextAccessor();
