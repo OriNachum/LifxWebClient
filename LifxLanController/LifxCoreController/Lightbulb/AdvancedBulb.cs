@@ -23,7 +23,9 @@ namespace LifxCoreController.Lightbulb
         private async Task CheckActionQueueAsync()
         {
             Logger.Information($"LifxBulb - CheckActionQueueAsync - { actionQueue.Count() } items in action queue");
-            if (actionQueue.Any() && actionQueue.TryTake(out Func<Task> unqueuedAction))
+            if (this.Light != null && 
+                actionQueue.Any() && 
+                actionQueue.TryTake(out Func<Task> unqueuedAction))
             {
                 try
                 {
@@ -37,7 +39,11 @@ namespace LifxCoreController.Lightbulb
             }
             else
             {
-                LightState? newState = await this.GetStateAsync();
+                LightState? newState = null;
+                if (this.Light != null)
+                {
+                    newState = await this.GetStateAsync();
+                }
                 if (!newState.HasValue)
                 {
                     await this.ResetBulbAsync();

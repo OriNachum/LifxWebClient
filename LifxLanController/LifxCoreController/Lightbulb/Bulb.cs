@@ -61,7 +61,12 @@ namespace LifxCoreController.Lightbulb
         {
             get
             {
-                return this.Light.Address.GetAddressBytes();
+                if (this.Address == null)
+                {
+                    this.Address = this.Light.Address;
+                }
+
+                return this.Address.GetAddressBytes();
             }
             set
             {
@@ -143,9 +148,16 @@ namespace LifxCoreController.Lightbulb
         {
             var stackTrace = new StackTrace();
             this.Logger.Error($"Bulb - ResetBulbAsync - Resetting bulb, stacktrace: { stackTrace.ToString() }");
-            var address = this.Light.Address;
-            this.Light.Dispose();
-            this.Light = await new LightFactory().CreateLightAsync(address);
+            this.Light?.Dispose();
+            try
+            {
+                this.Light = await new LightFactory().CreateLightAsync(this.Address);
+            }
+            catch (Exception ex)
+            {
+                this.Logger.Error($"Bulb - ResetBulbAsync - Failed to reset bulb: { ex.ToString() }");
+                this.Light = null;
+            }
         } 
         #endregion
 
