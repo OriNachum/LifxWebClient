@@ -296,17 +296,7 @@ namespace LifxCoreController.Detector
             }
             string ipBaseString = ipBase.Select(x => x.ToString()).Aggregate((x, y) => $"{ x }.{ y }");
             Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Starts detecting lights for address family { ipBaseString }");
-            /*using (var pinger = new TcpClient())
-            {
-                pinger.SendTimeout = 100;
-                var ip = new IPAddress(ipBase);
-                await pinger.ConnectAsync(ip, port);
-                if (!pinger.Connected)
-                {
-                    // host is active
-                    return neighbourIps;
-                }
-            }*/
+
             var lastSygments = new List<byte>();
             for (byte i = 2; i < 255; i++)
             {
@@ -318,7 +308,6 @@ namespace LifxCoreController.Detector
                 var ipAddress = new IPAddress(ipBase);
                 using (var pinger = new Ping())
                 {
-                    // pinger.SendTimeout = 100;
                     try
                     {
                         PingReply reply = await pinger.SendPingAsync(ipAddress);
