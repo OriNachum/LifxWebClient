@@ -8,8 +8,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Lifx;
 using LifxCoreController.Api;
+using LifxCoreController.Detector;
 using LifxCoreController.Lightbulb;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Serilog;
 using Xunit;
@@ -21,6 +23,7 @@ namespace LifxCoreControllerTest
         private IHttpContextAccessor _httpContextAccessor;
         private HttpContext _defaultHttpContext;
         private ConnectionInfo _connectionInfo;
+        private IOptions<LifxDetectorConfiguration> _optionsLifxDetector;
         ILogger _logger;
 
         public LifxApiTest()
@@ -30,7 +33,7 @@ namespace LifxCoreControllerTest
             _connectionInfo = Substitute.For<ConnectionInfo>();
             _httpContextAccessor.HttpContext.Returns(_defaultHttpContext);
             _defaultHttpContext.Connection.Returns(_connectionInfo);
-
+            _optionsLifxDetector = Substitute.For<IOptions<LifxDetectorConfiguration>>();
             _logger =  Substitute.For<ILogger>();
         }
 
@@ -38,7 +41,7 @@ namespace LifxCoreControllerTest
         [Fact]
         public void CreateServerTest()
         {
-            var server = new LifxApi(null, _httpContextAccessor, _logger);
+            var server = new LifxApi(_optionsLifxDetector, _httpContextAccessor, _logger);
             Assert.NotNull(server);
         }
 
@@ -49,7 +52,7 @@ namespace LifxCoreControllerTest
             var knownIp = new IPAddress(new byte[] { 10, 0, 0, 7 });
             _connectionInfo.RemoteIpAddress.Returns(knownIp);
 
-            using (var server = new LifxDetector(_httpContextAccessor, _logger))
+            using (var server = new LifxDetector(_optionsLifxDetector, _httpContextAccessor, _logger))
             {
                 // Act
                 IEnumerable<IPAddress> allIpsQuery = await server.GetAllIpsInNetworkAsync();

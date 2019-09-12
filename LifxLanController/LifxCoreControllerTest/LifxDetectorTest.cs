@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using LifxCoreController.Detector;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Serilog;
 using Xunit;
@@ -17,6 +18,7 @@ namespace LifxCoreControllerTest
     public class LifxDetectorTest
     {
         ILogger _logger;
+        private IOptions<LifxDetectorConfiguration> _optionsLifxDetector;
         private IHttpContextAccessor _httpContextAccessor;
         private HttpContext _defaultHttpContext;
         private ConnectionInfo _connectionInfo;
@@ -29,13 +31,14 @@ namespace LifxCoreControllerTest
             _httpContextAccessor.HttpContext.Returns(_defaultHttpContext);
             _defaultHttpContext.Connection.Returns(_connectionInfo);
             _logger = Substitute.For<ILogger>();
+            _optionsLifxDetector = Substitute.For<IOptions<LifxDetectorConfiguration>>();
         }
 
 
         [Fact]
         public void CreateServerTest()
         {
-            var server = new LifxDetector(_httpContextAccessor, _logger);
+            var server = new LifxDetector(_optionsLifxDetector, _httpContextAccessor, _logger);
             Assert.NotNull(server);
         }
 
@@ -46,7 +49,7 @@ namespace LifxCoreControllerTest
             var knownIp = new IPAddress(new byte[] { 192, 168, 1, 11 });
             _connectionInfo.RemoteIpAddress.Returns(knownIp);
 
-            using (var server = new LifxDetector(_httpContextAccessor, _logger))
+            using (var server = new LifxDetector(_optionsLifxDetector, _httpContextAccessor, _logger))
             {
                 // Act
                 IEnumerable<IPAddress> allIpsQuery = await server.GetAllIpsInNetworkAsync();
@@ -61,7 +64,7 @@ namespace LifxCoreControllerTest
         public async Task DetectLights_Success()
         {
             // Assign
-            using (var server = new LifxDetector(_httpContextAccessor, _logger))
+            using (var server = new LifxDetector(_optionsLifxDetector, _httpContextAccessor, _logger))
             using (var cancellationTokenSource = new CancellationTokenSource())
             {
                 // Act
