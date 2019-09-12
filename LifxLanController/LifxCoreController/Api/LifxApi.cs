@@ -12,8 +12,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Infrared;
 using Microsoft.AspNetCore.Http;
+using LifxCoreController.Detector;
+using Microsoft.Extensions.Options;
 
-namespace LifxCoreController
+namespace LifxCoreController.Api
 {
     public class LifxApi : LifxDetector, ILifxApi, IDisposable
     {
@@ -40,7 +42,12 @@ namespace LifxCoreController
             }
         }
 
-        public LifxApi(IHttpContextAccessor httpContextAccessor, ILogger logger) : base(httpContextAccessor, logger)
+        public LifxApi(IOptions<LifxDetectorConfiguration> lifxDetectorConfiguration,
+            IHttpContextAccessor httpContextAccessor,
+            ILogger logger)
+            : base(lifxDetectorConfiguration,
+                  httpContextAccessor,
+                  logger)
         {
             _logger = logger;
             Task.Run(() => StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME));

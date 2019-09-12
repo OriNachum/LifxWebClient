@@ -1,12 +1,13 @@
 ﻿using Lifx;
+using LifxCoreController.Detector;
 using LifxCoreController.Lightbulb;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
+using System.Threading.Tasks;S
 
-namespace LifxCoreController
+namespace LifxCoreController.Api
 {
     public interface ILifxApi : ILifxDetector, IDisposable
     {

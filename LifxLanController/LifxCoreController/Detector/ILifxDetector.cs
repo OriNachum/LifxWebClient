@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LifxCoreController
+namespace LifxCoreController.Detector
 {
     public interface ILifxDetector : IDisposable
     {

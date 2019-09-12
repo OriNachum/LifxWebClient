@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Infrared;
 using LifxCoreController;
+using LifxCoreController.Api;
+using LifxCoreController.Detector;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -48,6 +50,7 @@ namespace LifxWebApi
                 options.Filters.Add(new CorsAuthorizationFilterFactory("SiteCorsPolicy"));
             });
 
+            services.Configure<LifxDetectorConfiguration>(Configuration.GetSection("LifxDetector"));
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddHttpContextAccessor();
             services.AddSingleton<ILifxApi, LifxApi>();

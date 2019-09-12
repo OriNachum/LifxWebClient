@@ -1,6 +1,8 @@
 ﻿using Lifx;
+using LifxCoreController.Detector;
 using LifxCoreController.Lightbulb;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Serilog;
 using System;
@@ -15,12 +17,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LifxCoreController
+namespace LifxCoreController.Detector
 {
     public class LifxDetector : ILifxDetector
     {
         object lightsLock = new object();
-        private IHttpContextAccessor httpContextAccessor;
+
+        public IOptions<LifxDetectorConfiguration> LifxDetectorConfiguration { get; }
+
+        private IHttpContextAccessor HttpContextAccessor;
         ILogger _logger = null;
 
         ILogger Logger
@@ -47,9 +52,12 @@ namespace LifxCoreController
             }
         }
 
-        public LifxDetector(IHttpContextAccessor httpContextAccessor, ILogger logger)
+        public LifxDetector(IOptions<LifxDetectorConfiguration> lifxDetectorConfiguration,
+            IHttpContextAccessor httpContextAccessor,
+            ILogger logger)
         {
-            this.httpContextAccessor = httpContextAccessor;
+            this.LifxDetectorConfiguration = lifxDetectorConfiguration;
+            this.HttpContextAccessor = httpContextAccessor;
             _logger = logger;
             _bulbs = new ConcurrentDictionary<IPAddress, IAdvancedBulb>();
         }
@@ -271,13 +279,19 @@ namespace LifxCoreController
             int port = 56700;
             var neighbourIps = new List<IPAddress>();
             // new byte[4] { 10, 0, 0, 1 }; //{ 192, 168, 1, 1 };
-            byte[] ipBase = httpContextAccessor.HttpContext.Connection.RemoteIpAddress.GetAddressBytes();
+            byte[] ipBase = HttpContextAccessor.HttpContext.Connection.RemoteIpAddress.GetAddressBytes();
+            if (string.IsNullOrEmpty(this.LifxDetectorConfiguration?.Value.IP))
+            {
+                ipBase = this.LifxDetectorConfiguration?.Value.IP.Split('.')
+                    .Select(x => byte.Parse(x))
+                    .ToArray();
+            }
             if (ipBase.First() == 127)
             {
                 Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Looking for addresses in localhost, canceled");
                 return new List<IPAddress>();
             }
-            Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Starts detecting lights for address family {httpContextAccessor.HttpContext.Connection.RemoteIpAddress.ToString()}");
+            Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - Starts detecting lights for address family {HttpContextAccessor.HttpContext.Connection.RemoteIpAddress.ToString()}");
             /*using (var pinger = new TcpClient())
             {
                 pinger.SendTimeout = 100;
