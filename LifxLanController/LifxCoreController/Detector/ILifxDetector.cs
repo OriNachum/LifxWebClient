@@ -1,4 +1,5 @@
 ﻿using Lifx;
+using LifxCoreController.Lightbulb;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,12 +8,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LifxCoreController
+namespace LifxCoreController.Detector
 {
     public interface ILifxDetector : IDisposable
     {
-        IDictionary<IPAddress, LightBulb> Lights { get;  }
+        IDictionary<IPAddress, IAdvancedBulb> Bulbs { get;  }
 
-        Task DetectLights(CancellationToken cancellationToken);
+        Task DetectLightsAsync(CancellationToken cancellationToken);
     }
 }

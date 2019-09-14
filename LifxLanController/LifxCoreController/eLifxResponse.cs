@@ -7,5 +7,6 @@
         BulbDoesntExist,
         NameAlreadyExists,
         ActionFailed,
+        BadParameter,
     }
 }

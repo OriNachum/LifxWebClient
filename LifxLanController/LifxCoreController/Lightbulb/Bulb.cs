@@ -1,32 +1,46 @@
 ﻿using Lifx;
 using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LifxCoreController
+namespace LifxCoreController.Lightbulb
 {
-    public class LightBulb : ILight
+    public class Bulb : IBulb
     {
         [JsonIgnore]
-        public ILight Light { get; }
+        public ILight Light { get; private set; }
 
         public string Label { get; private set; }
-        public Power Power { get; private set; }
-        public int Temperature { get; private set; }
-        public double Brightness { get; private set; }
-        public int ColorHue { get; private set; }
-        public double ColorSaturation { get; private set; }
 
+        public IBulbState State { get; set; }
+
+        private LightState? _lastVerifiedState;
+
+        [JsonIgnore]
         public LightState? LastVerifiedState
         {
-            get;
-            private set;
+            get
+            {
+                return _lastVerifiedState;
+            }
+            private set
+            {
+                _lastVerifiedState = value.Value;
+                if (_lastVerifiedState.HasValue)
+                {
+                    LightState state = _lastVerifiedState.Value;
+                    this.Label = state.Label.Value;
+                    this.State = new BulbState(_lastVerifiedState.Value, enforceLimits: true);
+                }
+            }
         }
 
         public DateTime StateVerificationTimeUtc { get; private set; }
@@ -34,11 +48,25 @@ namespace LifxCoreController
         [JsonIgnore]
         public IPAddress Address { get; private set; }
 
+        public string IPv4Address
+        {
+            get
+            {
+                return string.Join('.', AddressByte);
+            }
+        }
+
+        [JsonIgnore]
         public byte[] AddressByte
         {
             get
             {
-                return this.Light.Address.GetAddressBytes();
+                if (this.Address == null)
+                {
+                    this.Address = this.Light.Address;
+                }
+
+                return this.Address.GetAddressBytes();
             }
             set
             {
@@ -50,38 +78,53 @@ namespace LifxCoreController
 
         public uint Version { get; private set; }
 
-        public LightBulb(ILight light, LightState state)
+        public const int BulbsReliefTimeMilliseconds = 200;
+        #region Logger
+        private ILogger _logger = null;
+
+        protected ILogger Logger
         {
+            get
+            {
+                if (_logger == null && !string.IsNullOrEmpty(Label))
+                {
+                    _logger = new LoggerConfiguration()
+                        .WriteTo.File($"C:\\Logs\\LifxWebApi\\{ Label }.log", shared: true)
+                        .CreateLogger();
+                }
+                return _logger;
+            }
+        }
+        #endregion
+
+        public Bulb(ILight light, LightState state, ILogger logger = null)
+        {
+            if (logger != null)
+            {
+                _logger = logger;
+            }
+
             this.Light = light;
 
             this.Address = light.Address;
             this.Product = light.Product;
             this.Version = light.Version;
 
-            this.Label = state.Label.Value;
-            this.Power = state.Power;
-            this.Temperature = state.Temperature.Value;
-            this.Brightness = state.Brightness.Value;
-            this.ColorHue = state.Color.Hue.Value;
-            this.ColorSaturation = state.Color.Saturation.Value;
             this.LastVerifiedState = state;
             this.StateVerificationTimeUtc = DateTime.UtcNow;
-        }
 
+            Logger.Information($"LifxBulb - Registered new light: { this }");
+        }
 
         public override string ToString()
         {
             var sb = new StringBuilder();
             sb.Append($"Name: { Label }; ");
-            sb.Append($"IP: { string.Join('.', Address.GetAddressBytes()) }; ");
+            sb.Append($"IP: { IPv4Address }; ");
             sb.Append($"Product: { Product }; ");
             sb.Append($"Version: { Version }; ");
-            sb.Append($"Power: { Power }; ");
-            sb.Append($"Temperature: { Temperature }; ");
-            sb.Append($"Brightness: { Brightness }; ");
-            sb.Append($"ColorHue: { ColorHue }; ");
-            sb.Append($"ColorSaturation: { ColorSaturation }; ");
-            sb.Append($"LastVerifiedState: { StateVerificationTimeUtc.ToShortTimeString() }; ");
+            sb.Append($"State: { State }; ");
+            sb.Append($"LastVerifiedStateTime: { StateVerificationTimeUtc.ToShortTimeString() } UTC; ");
             sb.Append($"");
             return sb.ToString();
         }
@@ -93,15 +136,33 @@ namespace LifxCoreController
             return serializedLightBulb;
         }
 
-        public static LightBulb Deserialized(string serializedBulb)
+        public static Bulb Deserialized(string serializedBulb)
         {
-            LightBulb light = JsonConvert.DeserializeObject<LightBulb>(serializedBulb);
+            Bulb light = JsonConvert.DeserializeObject<Bulb>(serializedBulb);
             return light;
         }
         #endregion
 
+        #region IBulb
+        public async Task ResetBulbAsync()
+        {
+            var stackTrace = new StackTrace();
+            this.Logger.Error($"Bulb - ResetBulbAsync - Resetting bulb, stacktrace: { stackTrace.ToString() }");
+            this.Light?.Dispose();
+            try
+            {
+                this.Light = await new LightFactory().CreateLightAsync(this.Address);
+            }
+            catch (Exception ex)
+            {
+                this.Logger.Error($"Bulb - ResetBulbAsync - Failed to reset bulb: { ex.ToString() }");
+                this.Light = null;
+            }
+        } 
+        #endregion
+
         #region ILight
-        public async Task<LightState> GetStateAsync()
+        public async Task<LightState?> GetStateAsync()
         {
             using (var cts = new CancellationTokenSource())
             {
@@ -109,17 +170,29 @@ namespace LifxCoreController
             }
         }
 
-        public async Task<LightState> GetStateAsync(CancellationToken cancellationToken)
+        public async Task<LightState?> GetStateAsync(CancellationToken cancellationToken)
         {
             using (var cts = new CancellationTokenSource())
             {
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.GetState, cts))
                 {
-                    LightState newState = await this.Light.GetStateAsync(cts.Token);
-                    this.LastVerifiedState = newState;
-                    this.StateVerificationTimeUtc = DateTime.UtcNow;
-                    return newState;
+                    try
+                    {
+                        LightState newState = await this.Light.GetStateAsync(cts.Token);
+
+                        // Thread.Sleep(100); ? 
+                        this.LastVerifiedState = newState;
+                        this.StateVerificationTimeUtc = DateTime.UtcNow;
+                        Logger.Information($"LifxBulb - state refreshed: { this.State }");
+                        return newState;
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        Logger.Error($"LifxBulb - GetStatAsync - operation was canceled. Last verified state: { this.LastVerifiedState }.");
+                        Logger.Error($"LifxBulb - GetStatAsync - operation was canceled. Exception: { ex }.");
+                        return null;
+                    }
                 }
             }
         }
@@ -140,7 +213,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetLabel, cts))
                 {
                     await this.Light.SetLabelAsync(label, cts.Token);
-                    this.Label = label.Value;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                     return;
                 }
             }
@@ -162,7 +236,8 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetPower, cts))
                 {
                     await this.Light.SetPowerAsync(power, cts.Token);
-                    this.Power = power;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -183,12 +258,13 @@ namespace LifxCoreController
                 using (RaiseCommandRequested(eLifxCommand.SetPower, cts))
                 {
                     await this.Light.SetPowerAsync(power, durationInMilliseconds, cts.Token);
-                    this.Power = power;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
 
-        private async Task<bool> VerifyBulbState(Func<LightBulb, bool> condition)
+        protected async Task<bool> VerifyBulbState(Func<Bulb, bool> condition)
         {
             if (condition(this))
             {
@@ -197,41 +273,6 @@ namespace LifxCoreController
             }
 
             return false;
-        }
-        
-        /// <summary>
-        /// Brings the lightbulb to 100% over duration of time
-        /// </summary>
-        /// <param name="overTime">time in seconds for bulb to reach 100%</param>
-        /// <returns></returns>
-        public async Task<(eLifxResponse response, string data)> OnOverTimeAsync(int overTime)
-        {
-            Func<LightBulb, bool> condition = (x) => (x.Power == Power.On && x.Brightness == 1);
-            var sameCondition = await VerifyBulbState(condition);
-            if (sameCondition)
-            {
-                string serializedBulb = this.Serialize();
-                return ((int)eLifxResponse.Success, serializedBulb);
-            }
-            double initialBrightness = this.Brightness;
-            double nextBrightness = initialBrightness + SINGLE_PERCENT;
-            await this.SetBrightnessAsync(new Percentage(nextBrightness));
-            
-            // Export this part to runner, use 'overTime' to calculate progression
-            while (this.Brightness != 1) 
-            {
-                nextBrightness += SINGLE_PERCENT;
-                var nextBrightnessPercentage = new Percentage(nextBrightness);
-                Thread.Sleep(1000);
-                await this.SetBrightnessAsync(nextBrightnessPercentage);
-            }
-            // Add runner to keep going on "a pace"
-            // Add a runner to run in loops and send messages to the bulb.
-            // This will just load it with commands, and the runner will run them.
-            // Queue will be SortedDictionary by run time.
-
-            // await lightBulb.GetStateAsync();
-            return (eLifxResponse.Success, this.Serialize());
         }
 
         public async Task OffAsync()
@@ -249,8 +290,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.Off, cts))
                 {
+                    Logger.Information($"LifxBulb - { Label } - Turning light off");
                     await this.Light.OffAsync(cts.Token);
-                    this.Power = Power.Off;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -270,8 +313,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.Off, cts))
                 {
+                    Logger.Information($"LifxBulb - { Label } - Turning light off for { durationInMilliseconds / 1000 } seconds");
                     await this.Light.OffAsync(durationInMilliseconds, cts.Token);
-                    this.Power = Power.Off;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -289,10 +334,13 @@ namespace LifxCoreController
             using (var cts = new CancellationTokenSource())
             {
                 cancellationToken.Register(cts.Cancel);
-                using (RaiseCommandRequested(eLifxCommand.Off, cts))
+                using (RaiseCommandRequested(eLifxCommand.On, cts))
                 {
+                    Logger.Information($"LifxBulb - { Label } - Turning light on");
+
                     await this.Light.OnAsync(cts.Token);
-                    this.Power = Power.On;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -312,8 +360,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.On, cts))
                 {
+                    Logger.Information($"LifxBulb - { Label } - Turning light on for { durationInMilliseconds / 1000 } seconds");
                     await this.Light.OnAsync(durationInMilliseconds, cts.Token);
-                    this.Power = Power.On;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -333,8 +383,28 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.SetBrightness, cts))
                 {
+                    if (this.State.Brightness == brightness.Value)
+                    {
+                        await this.GetStateAsync();
+                        if (this.State.Brightness == brightness.Value)
+                        {
+                            return;
+                        }
+                    }
+
+                    Logger.Information($"LifxBulb - SetBrightnessAsync - Setting brightness to { brightness.Value.ToString() }");
                     await this.Light.SetBrightnessAsync(brightness, cts.Token);
-                    this.Brightness = brightness.Value;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    int count = 0;
+                    Logger.Information($"LifxBulb - SetBrightnessAsync - request sent - verifying");
+                    while (count < 3 && 
+                        await this.VerifyBulbState((bulb) => bulb.State.Brightness.Equals(brightness)) is bool stateNotChanged && 
+                        stateNotChanged)
+                    {
+                        Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    }
+                    Logger.Information($"LifxBulb - SetBrightnessAsync - Brightness is set to { this.State.Brightness }");
+
                 }
             }
         }
@@ -354,8 +424,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.SetBrightness, cts))
                 {
+                    Logger.Information($"LifxBulb - OnOverTimeAsync - Changing brightness to: { brightness.Value * 100 }%");
                     await this.Light.SetBrightnessAsync(brightness, durationInMilliseconds, cts.Token);
-                    this.Brightness = brightness.Value;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -375,8 +447,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.SetTemperature, cts))
                 {
+                    Logger.Information($"LifxBulb - OnOverTimeAsync - Changing temperature to: { temperature.Value }");
                     await this.Light.SetTemperatureAsync(temperature, cts.Token);
-                    this.Temperature = temperature.Value;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -396,8 +470,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.SetTemperature, cts))
                 {
+                    Logger.Information($"LifxBulb - OnOverTimeAsync - Changing temperature to: { temperature.Value }");
                     await this.Light.SetTemperatureAsync(temperature, durationInMilliseconds, cts.Token);
-                    this.Temperature = temperature.Value;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -417,9 +493,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.SetColor, cts))
                 {
+                    Logger.Information($"LifxBulb - OnOverTimeAsync - Changing hue to: { color.Hue.Value }; saturation to: { color.Saturation.Value * 100 }%");
                     await this.Light.SetColorAsync(color, cts.Token);
-                    this.ColorHue = color.Hue;
-                    this.ColorSaturation = color.Saturation;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -439,9 +516,10 @@ namespace LifxCoreController
                 cancellationToken.Register(cts.Cancel);
                 using (RaiseCommandRequested(eLifxCommand.SetColor, cts))
                 {
+                    Logger.Information($"LifxBulb - OnOverTimeAsync - Changing hue to: { color.Hue.Value }; saturation to: { color.Saturation.Value * 100 }%");
                     await this.Light.SetColorAsync(color, durationInMilliseconds, cts.Token);
-                    this.ColorHue = color.Hue;
-                    this.ColorSaturation = color.Saturation;
+                    Thread.Sleep(BulbsReliefTimeMilliseconds);
+                    await this.GetStateAsync(cts.Token);
                 }
             }
         }
@@ -455,16 +533,31 @@ namespace LifxCoreController
         }
         #endregion
 
+
+        public bool IsCurrentState(IBulbState state)
+        {
+            Logger.Information($"LifxBulb - IsCurrentState - comparing to { state }");
+
+            if (!this.LastVerifiedState.HasValue)
+            {
+                return false;
+            }
+            var currentState = new BulbState(this.LastVerifiedState.Value, enforceLimits: false);
+            Logger.Information($"LifxBulb - IsCurrentState - current state is { currentState }");
+            return currentState.Equals(state);
+        }
+
         #region RaiseEvents
         object lockObject = new object();
 
         IDictionary<DateTime, CommandRequest> RequestedCommands = new Dictionary<DateTime, CommandRequest>();
         const int MaximumAllowedCommandsInFrame = 5;
+        private const int GapBetweenCommandMilliseconds = BulbsReliefTimeMilliseconds;
         TimeSpan CommandRequestMaxLifeTime = TimeSpan.FromSeconds(30);
-        private const double SINGLE_PERCENT = 0.01;
 
         private LifxCommandCallback RaiseCommandRequested(eLifxCommand lifxCommand, CancellationTokenSource cancellationTokenSource)
         {
+            Logger.Information($"LifxBulb - RaiseCommandRequested - requested { lifxCommand.ToString() }");
             DateTime requestTime = DateTime.UtcNow;
             lock (lockObject)
             {
@@ -476,8 +569,13 @@ namespace LifxCoreController
                     throw new Exception("Maximum commands requested.");
                 }
 
+
                 // Add request to queue
                 AddRequestToQueue(lifxCommand, cancellationTokenSource, requestTime);
+                Thread.Sleep(GapBetweenCommandMilliseconds);
+                // Technically nothing else should be done after this. 
+                // The rest should be picked up by a runner.
+                // After the runner is done - it will remove the command from queue
             }
 
             return new LifxCommandCallback(() =>

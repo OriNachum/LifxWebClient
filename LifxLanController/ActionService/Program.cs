@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace LifxWebApi
+namespace ActionService
 {
     public class Program
     {
@@ -22,14 +22,13 @@ namespace LifxWebApi
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 var urlProvider = new ServiceUrlProvider(null);
-                var httpsPort = urlProvider.LinuxHttpsPorts[eService.LifxWebApi];
+                var httpsPort = urlProvider.LinuxHttpsPorts[eService.ActionService];
                 webHosterBuilder.ConfigureKestrel((context, options) =>
                 {
                     options.Listen(IPAddress.Any, httpsPort);
                     // Set properties and call methods on options
                 });
             }
-
             webHosterBuilder.Build().Run();
         }
 

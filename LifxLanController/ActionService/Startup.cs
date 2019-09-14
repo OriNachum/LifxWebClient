@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
+using ActionService.Logic;
 using Infrared;
-using LifxCoreController;
-using LifxCoreController.Api;
-using LifxCoreController.Detector;
+using Infrared.Impl;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -15,9 +15,10 @@ using Microsoft.AspNetCore.Mvc.Cors.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using ProvidersInterface;
 using Serilog;
 
-namespace LifxWebApi
+namespace ActionService
 {
     public class Startup : IStartup
     {
@@ -31,6 +32,10 @@ namespace LifxWebApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
+            //IServiceProvider serviceProvider = new ServiceCollection().AddHttpClient().BuildServiceProvider();
+            //IHttpClientFactory httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
+
+            //services.AddSingleton<IHttpContextFactory, httpClientFactory>();
             services.AddCors(options =>
             {
                 options.AddPolicy(CorsPolicy.Name,
@@ -39,8 +44,10 @@ namespace LifxWebApi
                     builder.AllowAnyHeader();
                     builder.AllowAnyMethod();
                     builder.AllowAnyOrigin();
-                    //builder.SetIsOriginAllowed(origin => true); // For anyone access.
-                                              //corsBuilder.WithOrigins("http://localhost:56573"); // for a specific url. Don't add a forward slash on the end!
+                    //builder.WithOrigins("*:8080");
+                    // builder.SetIsOriginAllowed(origin => true); // For anyone access.
+
+                    //corsBuilder.WithOrigins("http://localhost:56573"); // for a specific url. Don't add a forward slash on the end!
                     // builder.AllowCredentials(); No AnyOrigin with Credentials
                     // builder.WithOrigins(CorsPolicy.AllowedSources);
                 });
@@ -49,12 +56,13 @@ namespace LifxWebApi
             {
                 options.Filters.Add(new CorsAuthorizationFilterFactory("SiteCorsPolicy"));
             });
-            services.AddOptions();
-            services.Configure<LifxDetectorConfiguration>(Configuration.GetSection("LifxDetector"));
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-            services.AddHttpContextAccessor();
-            services.AddSingleton<ILifxApi, LifxApi>();
-            services.AddSingleton<ILogger, LifxWebApiServiceLogger>();
+
+            services.AddHttpClient();
+            services.AddSingleton<ILogger, ActionServiceLogger>();
+            services.AddSingleton<IServiceUrlProvider, ServiceUrlProvider>();
+            services.AddSingleton<IActionProvider, ActionProvider>();
+            services.Configure<ActionProvider>(Configuration);
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
 
             return services.BuildServiceProvider();
         }
@@ -69,6 +77,7 @@ namespace LifxWebApi
             }
             else
             {
+                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 
@@ -80,6 +89,7 @@ namespace LifxWebApi
         {
             app.UseCors(CorsPolicy.Name);
             app.UseHsts();
+        
             app.UseHttpsRedirection();
             app.UseMvc();
         }
