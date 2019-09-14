@@ -19,7 +19,8 @@ namespace LifxWebApi
         public static void Main(string[] args)
         {
             IWebHostBuilder webHosterBuilder = CreateWebHostBuilder(args);
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            var osProvider = new OSProvider();
+            if (osProvider.IsOSPlatform(eOSPlatform.Linux))
             {
                 var urlProvider = new ServiceUrlProvider(null);
                 var httpsPort = urlProvider.LinuxHttpsPorts[eService.LifxWebApi];

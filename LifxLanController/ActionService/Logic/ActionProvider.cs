@@ -27,15 +27,15 @@ namespace ActionService.Logic
 
         private string PrependConfigPath(string fileName)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            switch (this.OSProvider.GetOSPlatform())
             {
-                return $"C:\\LifxWebApi\\{ fileName }";
+                case eOSPlatform.Windows:
+                    return $"C:\\LifxWebApi\\{ fileName }";
+                case eOSPlatform.Linux:
+                    return $"/home/pi/lifx/{ fileName }";
+                default:
+                    return fileName;
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                return $"/home/pi/lifx/{ fileName }";
-            }
-            return fileName;
         }
 
         private string ActionsDefinitionsFilePath 
@@ -50,14 +50,14 @@ namespace ActionService.Logic
         IDictionary<string, ActionDefinition> ActionsDefinitions;
 
         private ILogger Logger { get; }
-
+        public IOSProvider OSProvider { get; }
         private IServiceUrlProvider ServiceUrlProvider { get; }
 
-        public ActionProvider(ILogger logger, IServiceUrlProvider serviceUrlProvider)
+        public ActionProvider(ILogger logger, IServiceUrlProvider serviceUrlProvider, IOSProvider osProvider)
         {
             this.Logger = logger;
             this.Logger.Information("ActionProvider started");
-
+            this.OSProvider = osProvider;
             this.ServiceUrlProvider = serviceUrlProvider;
 
             // InitializeArraysHardCoded();

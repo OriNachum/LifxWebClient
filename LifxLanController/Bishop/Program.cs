@@ -5,6 +5,7 @@ using System.ServiceProcess;
 using System.Threading.Tasks;
 using Bishop.Engine;
 using Bishop.Service;
+using Infrared.Enums;
 using Infrared.Impl;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
@@ -31,15 +32,27 @@ namespace Bishop
             {
                 try
                 {
-                    if (args != null && args.Any() && args[0] == "console")
+                    var osProvier = new OSProvider();
+                    switch (osProvier.GetOSPlatform())
                     {
-                        bishopService.Start();
-                        Console.WriteLine("Press any key to close service");
-                        Console.ReadKey();
-                    }
-                    else
-                    {
-                        bishopService.RunAsService();
+                        case eOSPlatform.Linux:
+                            bishopService.Start();
+                            Console.WriteLine("Press any key to close service");
+                            Console.Read();
+                            break;
+
+                        case eOSPlatform.Windows:
+                            if (args != null && args.Any() && args[0] == "console")
+                            {
+                                bishopService.Start();
+                                Console.WriteLine("Press any key to close service");
+                                Console.ReadKey();
+                            }
+                            else
+                            {
+                                bishopService.RunAsService();
+                            }
+                            break;
                     }
                 }
                 catch (Exception ex)

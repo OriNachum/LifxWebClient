@@ -61,13 +61,15 @@ namespace Infrared.Impl
             }
 
             string basePath = "";
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            var osProvier = new OSProvider();
+            switch (osProvier.GetOSPlatform())
             {
-                basePath = $"{ ActiveSite }/{ service.ToString() }";
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                basePath = $"{ ActiveSite }:{ this.LinuxHttpsPorts[service] }";
+                case eOSPlatform.Windows:
+                    basePath = $"{ ActiveSite }/{ service.ToString() }";
+                    break;
+                case eOSPlatform.Linux:
+                    basePath = $"{ ActiveSite }:{ this.LinuxHttpsPorts[service] }";
+                    break;
             }
 
             return $"{ basePath }/{this.Urls[service]}/{actionId}";

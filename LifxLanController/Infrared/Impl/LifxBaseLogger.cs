@@ -1,10 +1,9 @@
-﻿using Serilog;
+﻿using Infrared.Enums;
+using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Infrared.Impl
 {
@@ -19,17 +18,25 @@ namespace Infrared.Impl
         {
             get
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                var osProvier = new OSProvider();
+                switch (osProvier.GetOSPlatform())
                 {
-                    return $"C:\\Logs\\LifxWebApi\\{ this.FileName }";
+                    case eOSPlatform.Windows:
+                        return $"C:\\Logs\\LifxWebApi\\{ this.FileName }";
+
+                    case eOSPlatform.Linux:
+                        return $"/home/pi/logs/{ this.FileName }";
+
+                    case eOSPlatform.Unknown:
+                        return this.FileName;
+
+                    case eOSPlatform.OSX:
+                        return this.FileName;
+
+                    default:
+                        throw new Exception("Unrecognized os type");
                 }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    return $"/home/pi/logs/{ this.FileName }";
-                }
-                return this.FileName;
             }
-            
         }
 
         ILogger _logger;
