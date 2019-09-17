@@ -98,9 +98,9 @@ namespace ActionService.Logic
             var actionModel = new ActionModel
             {
                 Name = actionSchedule.ActionName,
-                FullUrl = fullUrl,
+                // FullUrl = fullUrl,
                 Time = actionSchedule.Time,
-                DayOfWeek = actionSchedule.Day,
+                DaysOfWeek = actionSchedule.Day.HasValue ? new[] { actionSchedule.Day.Value } : new DayOfWeek[] { },
                 Active = true,
             };
             return actionModel;
@@ -117,9 +117,9 @@ namespace ActionService.Logic
                     {
                         Id = actionSchedule.Key.Id,
                         Name = actionDefinition.Key,
-                        FullUrl = GetFullUrl(actionDefinition.Value),
+                        // FullUrl = GetFullUrl(actionDefinition.Value),
                         Time = actionSchedule.Key.Time,
-                        DayOfWeek = actionSchedule.Key.Day,
+                        DaysOfWeek = actionSchedule.Key.Day.HasValue ? new[] { actionSchedule.Key.Day.Value } : new DayOfWeek[] { },
                         Active = actionSchedule.Value,
                     };
                     actionModels.Add(actionModel);
@@ -229,7 +229,10 @@ namespace ActionService.Logic
             }
 
             actionSchedule.ActionName = actionModel.Name;
-            actionSchedule.Day = actionModel.DayOfWeek;
+            if (actionModel.DaysOfWeek.Any())
+            {
+                actionSchedule.Day = actionModel.DaysOfWeek.First();
+            }
             actionSchedule.Time = actionModel.Time;
             this.ActionsSchedule[actionSchedule] = actionModel.Active;
 

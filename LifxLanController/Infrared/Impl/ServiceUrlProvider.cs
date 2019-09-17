@@ -1,7 +1,9 @@
 ﻿using Infrared.Enums;
+using Microsoft.AspNetCore.Http;
 using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -9,13 +11,15 @@ namespace Infrared.Impl
 {
     public class ServiceUrlProvider : IServiceUrlProvider
     {
-        const string Hostname = "ori";
+        // const string Hostname = "ori";
 
-        readonly IDictionary<string, string> Sites = new Dictionary<string, string> {
-            { "dev", $"https://{Hostname}:44370" },
-            { "devIisDebug", $"https://{Hostname}:5001"},
-            { "devIis",  $"https://{Hostname}"},
-        };
+        public string Hostname
+        {
+            get;
+            private set;
+        }
+
+        private readonly IDictionary<string, string> Sites;
 
         string ActiveSite
         {
@@ -50,6 +54,19 @@ namespace Infrared.Impl
                 { eService.LifxWebApi, 5011 },
                 { eService.ActionService, 5021 },
             };
+            var HttpContextAccessor = new HttpContextAccessor();
+            Hostname = HttpContextAccessor.HttpContext
+                .Connection
+                .RemoteIpAddress
+                .GetAddressBytes()
+                .Select(x => x.ToString())
+                .Aggregate((x,y) => $"{ x }.{ y }");
+
+            this.Sites = new Dictionary<string, string> {
+            { "dev", $"https://{Hostname}:44370" },
+            { "devIisDebug", $"https://{Hostname}:5001"},
+            { "devIis",  $"https://{Hostname}"},
+        };
         }
 
         public string GetUrl(eService service, string actionId)
