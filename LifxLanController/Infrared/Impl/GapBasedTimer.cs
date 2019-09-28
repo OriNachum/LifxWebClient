@@ -15,7 +15,7 @@ namespace Infrared.Impl
         private Timer timer = null;
         TimeSpan TimerSleepSpan;
         Func<Task> timerCallbackAsync;
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
         public GapBasedTimer(Func<Task> callback = null, TimeSpan? sleepSpan = null, ILogger logger = null)
         {

@@ -70,7 +70,7 @@ namespace Infrared.Impl
         };
         }
 
-        public string GetUrl(eService service, string actionId)
+        public string GetUrl(eService service, string actionId, IDictionary<string, string> parameters = null)
         {
             if (!this.Urls.ContainsKey(service))
             {
@@ -90,6 +90,12 @@ namespace Infrared.Impl
                     break;
             }
 
+            if (parameters == null || parameters.Count == 0)
+            {
+                return $"{ basePath }/{this.Urls[service]}/{actionId}";
+            }
+
+            // Append parameters
             return $"{ basePath }/{this.Urls[service]}/{actionId}";
         }
     }

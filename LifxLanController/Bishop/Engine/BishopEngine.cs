@@ -52,9 +52,10 @@ namespace Bishop.Engine
                 this.Logger.Information("ActionProvider - GenerateActionFromScheduleModel - nextAction - Generated Action started");
                 using (var client = this.HttpClientFactory.CreateClient())
                 {
-                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url request: {actionModel.FullUrl}");
-                    var response = await client.GetAsync(actionModel.FullUrl);
-                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url response: {response}");
+                    string urlRequest = this.ServiceUrlProvider.GetUrl(actionModel.Service, actionModel.ActionId, actionModel.Parameters);
+                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url request: { urlRequest }");
+                    var response = await client.GetAsync(urlRequest);
+                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url response: { response }");
                     return response.ToString();
                 }
             };
@@ -88,15 +89,15 @@ namespace Bishop.Engine
             using (var client = this.HttpClientFactory.CreateClient())
             {
                 var request = GetNextActionUrl;
-                Logger.Debug($"BishopEngine - NextCycleAction - httpClient Request { request}");
+                Logger.Debug($"BishopEngine - NextCycleAction - httpClient Request { request }");
                 try
                 {
                     HttpResponseMessage response = await client.GetAsync(request);
-                    Logger.Debug($"BishopEngine - NextCycleAction - httpClient response { response}");
+                    Logger.Debug($"BishopEngine - NextCycleAction - httpClient response { response }");
 
                     if (!response.IsSuccessStatusCode)
                     {
-                        Logger.Error($"BishopEngine - NextCycleAction - Error in request for next action. request: { request } response: {response}");
+                        Logger.Error($"BishopEngine - NextCycleAction - Error in request for next action. request: { request } response: { response }");
                         return;
                     }
                     string responseString = await response.Content.ReadAsStringAsync();
@@ -124,7 +125,7 @@ namespace Bishop.Engine
 
             try
             {
-                Logger.Information($"BishopEngine - NextCycleAction - Found an action to perform.. starting {model.FullUrl}");
+                Logger.Information($"BishopEngine - NextCycleAction - Found an action to perform.. starting { model.Name } ({ model.Id })");
                 string response = await action();
                 Logger.Information($"BishopEngine - NextCycleAction - Completed. Response: {response}");
             }

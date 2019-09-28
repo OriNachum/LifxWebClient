@@ -102,6 +102,8 @@ namespace LifxCoreController.Api
             }
             catch (Exception ex)
             {
+                Logger.Information($"LifxApi - SetAutoRefreshAsync failed { ex }");
+
                 return eLifxResponse.ActionFailed;
             }
 

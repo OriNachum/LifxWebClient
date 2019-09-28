@@ -605,10 +605,10 @@ namespace LifxCoreController.Lightbulb
                 .Select(x => (x.Key, x.Value.CancelTokenSource))
                 .ToList();
 
-            foreach ((DateTime Key, CancellationTokenSource TokenSource) command in oldCommandsCancelletionTokens)
+            foreach ((DateTime Key, CancellationTokenSource TokenSource) in oldCommandsCancelletionTokens)
             {
-                command.TokenSource.Cancel();
-                RequestedCommands.Remove(command.Key);
+                TokenSource.Cancel();
+                RequestedCommands.Remove(Key);
             }
         }
         #endregion

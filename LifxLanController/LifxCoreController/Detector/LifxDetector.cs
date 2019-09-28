@@ -25,7 +25,7 @@ namespace LifxCoreController.Detector
 
         public IOptions<LifxDetectorConfiguration> LifxDetectorConfiguration { get; }
 
-        private IHttpContextAccessor HttpContextAccessor;
+        private readonly IHttpContextAccessor HttpContextAccessor;
         ILogger _logger = null;
 
         ILogger Logger
@@ -62,7 +62,7 @@ namespace LifxCoreController.Detector
             _bulbs = new ConcurrentDictionary<IPAddress, IAdvancedBulb>();
         }
 
-        object DetectionStartedLock = new object();
+        private readonly object DetectionStartedLock = new object();
         bool DetectionStarted = false;
 
         public async Task DetectLightsAsync(CancellationToken cancellationToken)

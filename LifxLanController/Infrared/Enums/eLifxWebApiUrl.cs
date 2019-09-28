@@ -4,7 +4,9 @@ using System.Text;
 
 namespace Infrared.Enums
 {
+#pragma warning disable IDE1006 // Naming Styles
     public enum eLifxWebApiUrl : short
+#pragma warning restore IDE1006 // Naming Styles
     {
         GetBulbs,
         Reset,

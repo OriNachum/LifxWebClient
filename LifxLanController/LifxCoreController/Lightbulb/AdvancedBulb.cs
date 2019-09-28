@@ -18,7 +18,7 @@ namespace LifxCoreController.Lightbulb
     public class AdvancedBulb : Bulb, IAdvancedBulb
     {
 
-        private IProducerConsumerCollection<Func<Task>> actionQueue = new ConcurrentQueue<Func<Task>>();
+        private readonly IProducerConsumerCollection<Func<Task>> actionQueue = new ConcurrentQueue<Func<Task>>();
         object actionQueueLock = new object();
         private async Task CheckActionQueueAsync()
         {
@@ -52,7 +52,7 @@ namespace LifxCoreController.Lightbulb
             }
         }
 
-        private ITimer actionRunner;
+        private readonly ITimer actionRunner;
         private TimeSpan IdlePeriod = TimeSpan.FromSeconds(5);
         private TimeSpan WorkingPeriod = TimeSpan.FromMilliseconds(100);
 
