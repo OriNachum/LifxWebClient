@@ -90,13 +90,20 @@ namespace Infrared.Impl
                     break;
             }
 
+            string urlPath = $"{ basePath }/{this.Urls[service]}/{actionId}";
             if (parameters == null || parameters.Count == 0)
             {
-                return $"{ basePath }/{this.Urls[service]}/{actionId}";
+                return urlPath;
             }
 
-            // Append parameters
-            return $"{ basePath }/{this.Urls[service]}/{actionId}";
+            var urlPathWithParameters = new UriBuilder(urlPath);
+            foreach (KeyValuePair<string, string> parameter in parameters)
+            {
+                urlPathWithParameters.Query += string.IsNullOrEmpty(urlPathWithParameters.Query) ? "" : "&";
+                urlPathWithParameters.Query += $"{ parameter.Key }={ parameter.Value }";
+            }
+
+            return urlPathWithParameters.Uri.AbsoluteUri;
         }
     }
 }
