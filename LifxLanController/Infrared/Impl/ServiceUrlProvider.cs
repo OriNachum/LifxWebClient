@@ -53,6 +53,7 @@ namespace Infrared.Impl
             {
                 { eService.LifxWebApi, 5011 },
                 { eService.ActionService, 5021 },
+                { eService.BishopService, 5031 },
             };
             var HttpContextAccessor = new HttpContextAccessor();
             Hostname = HttpContextAccessor.HttpContext

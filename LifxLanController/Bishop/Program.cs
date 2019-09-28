@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.ServiceProcess;
 using System.Threading.Tasks;
@@ -21,14 +22,13 @@ namespace Bishop
     {
         public static void Main(string[] args)
         {
-
             var serviceCollection = new ServiceCollection();
-            var bishopShartup = new BishopStartup();
-            IServiceProvider serviceProvider = bishopShartup.ConfigureServices(serviceCollection);
-            
-            var logger = serviceProvider.GetService<ILogger>();
+            var bishopStartup = new BishopStartup();
+            IServiceProvider serviceProvider = bishopStartup.ConfigureServices(serviceCollection);
+
+            ILogger logger = serviceProvider.GetService<ILogger>();
             logger.Information("Bishop Main Program initialized");
-            using (var bishopService = serviceProvider.GetService<IWebHost>())
+            using (IWebHost bishopService = serviceProvider.GetService<IWebHost>())
             {
                 try
                 {
@@ -36,9 +36,19 @@ namespace Bishop
                     switch (osProvier.GetOSPlatform())
                     {
                         case eOSPlatform.Linux:
-                            bishopService.Start();
-                            Console.WriteLine("Press any key to close service");
-                            Console.Read();
+                            
+                            logger.Information("Bishop Main Service is starting");
+                            IWebHostBuilder webHosterBuilder = CreateWebHostBuilder(args);
+                            var urlProvider = new ServiceUrlProvider(null);
+                            var httpsPort = urlProvider.LinuxHttpsPorts[eService.BishopService];
+                            webHosterBuilder.ConfigureKestrel((context, options) =>
+                            {
+                                options.Listen(IPAddress.Any, httpsPort);
+                                // Set properties and call methods on options
+                            });
+
+                            webHosterBuilder.Build().Run();
+                            logger.Information("Bishop Main Service is stopped");
                             break;
 
                         case eOSPlatform.Windows:
@@ -61,5 +71,9 @@ namespace Bishop
                 }
             }
         }
+        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+            WebHost.CreateDefaultBuilder(args)
+        .UseStartup<BishopStartup>();
+
     }
 }

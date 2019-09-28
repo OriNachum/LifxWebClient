@@ -8,5 +8,6 @@ namespace Infrared.Enums
     {
         LifxWebApi,
         ActionService,
+        BishopService,
     }
 }

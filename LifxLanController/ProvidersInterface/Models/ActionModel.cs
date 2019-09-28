@@ -10,7 +10,7 @@ namespace ProvidersInterface.Models
         public string Name { get; set; }
         public string FullUrl { get; set; }
         public DateTime Time { get; set; }
-        public DateTime Date { get; set; }
+        public DateTime? Date { get; set; }
         public IEnumerable<DayOfWeek> DaysOfWeek { get; set; }
         public bool Active { get; set; }
         public bool Repeating { get; set; }

@@ -13,16 +13,17 @@ namespace VueLifxServer
         public static void Main(string[] args)
         {
             var serviceCollection = new ServiceCollection();
-            var bishopShartup = new VueLifxServerStartup();
-            IServiceProvider serviceProvider = bishopShartup.ConfigureServices(serviceCollection);
+            var vueLifxServerStartup = new VueLifxServerStartup();
+            IServiceProvider serviceProvider = vueLifxServerStartup.ConfigureServices(serviceCollection);
 
             var logger = serviceProvider.GetService<ILogger>();
-            logger.Information("Bishop Main Program initialized");
-            using (var bishopService = serviceProvider.GetService<IWebHost>())
+            logger.Information("VueLifxServer Main Program initialized");
+            using (IWebHost vueLifxServer = serviceProvider.GetService<IWebHost>())
             {
                 try
                 {
-                    bishopService.RunAsService();
+                    logger.Information("VueLifxServer Main Program starting");
+                    vueLifxServer.RunAsService();
                     logger.Information("VueLifxServerAsService Program Main ILifxVueServer was created, running this as service");
                 }
                 catch (Exception ex)
