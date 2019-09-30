@@ -15,6 +15,9 @@ namespace ActionService.Models
         public DateTime Time { get; set; }
         [JsonProperty("ActionName")]
         public string ActionName { get; set; }
+        public DateTime? Date { get; internal set; }
+        public bool Repeating { get; internal set; }
+        public bool Active { get; internal set; }
 
         public override string ToString()
         {

@@ -12,9 +12,9 @@ namespace ProvidersInterface
         ScheduleModel GetFullSchedule();
         IEnumerable<string> GetActions();
         IEnumerable<string> GetSupportedActions();
-        bool DefineAction(string name, string supportedAction, string parameters);
+        bool DefineAction(string name, string supportedAction, IDictionary<string, string> parameters);
 
-        void ScheduleAction(string actionName, DateTime timeToRun, DayOfWeek? dayOfweek);
+        void ScheduleAction(string actionName, DateTime timeToRun, DayOfWeek? dayOfweek, DateTime? specificDate, bool repeating);
         bool DeleteScheduledAction(int id);
         bool ModifyScheduledAction(ActionModel deserializedModel);
     }

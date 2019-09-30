@@ -79,7 +79,8 @@ namespace ActionService.Controllers
         public ActionResult<string> DefineAction(string name, string supportedAction, string parameters)
         {
             Logger.Information($"ActionController - DefineAction - requested to create action { name } with supportedAction { supportedAction } and parameters { parameters }");
-            bool success = this.ActionProvider.DefineAction(name, supportedAction, parameters);
+            var parametersObject = JsonConvert.DeserializeObject<Dictionary<string, string>>(parameters);
+            bool success = this.ActionProvider.DefineAction(name, supportedAction, parametersObject);
             var serializedResult = success ? "Success" : "Fail";
             Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
             return new ActionResult<string>(serializedResult);
@@ -100,7 +101,7 @@ namespace ActionService.Controllers
                     Logger.Information($"ActionController - ScheduleAction - day of week for { name } is { parsedDayOfWeek }");
                 }
 
-                this.ActionProvider.ScheduleAction(name, parsedTimeToRun, parsedDayOfWeek);
+                this.ActionProvider.ScheduleAction(name, parsedTimeToRun, parsedDayOfWeek, null, true);
 
                 Logger.Error($"ActionController - ScheduleAction - succeeded scheduling action { name }");
 

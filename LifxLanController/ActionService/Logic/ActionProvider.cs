@@ -46,7 +46,7 @@ namespace ActionService.Logic
             }
         }
 
-        IDictionary<ActionSchedule, bool> ActionsSchedule;
+        IList<ActionSchedule> ActionsSchedule;
         IDictionary<string, ActionDefinition> ActionsDefinitions;
 
         private ILogger Logger { get; }
@@ -75,12 +75,11 @@ namespace ActionService.Logic
         public ActionModel GetNextScheduledAction()
         {
             ActionSchedule actionSchedule = this.ActionsSchedule
-                .Where(x => x.Value)
-                .Where(x => !x.Key.Day.HasValue || x.Key.Day == DateTime.Now.DayOfWeek)
-                .Where(x => x.Key.Time.TimeOfDay <= DateTime.Now.TimeOfDay)
-                .Where(x => x.Key.Time.AddMinutes(30).TimeOfDay > DateTime.Now.TimeOfDay)
-                .Where(x => this.ActionsDefinitions.ContainsKey(x.Key.ActionName))
-                .Select(x => x.Key)
+                .Where(x => x.Active)
+                .Where(x => !x.Day.HasValue || x.Day == DateTime.Now.DayOfWeek)
+                .Where(x => x.Time.TimeOfDay <= DateTime.Now.TimeOfDay)
+                .Where(x => x.Time.AddMinutes(30).TimeOfDay > DateTime.Now.TimeOfDay)
+                .Where(x => this.ActionsDefinitions.ContainsKey(x.ActionName))
                 .FirstOrDefault();
             if (actionSchedule == null)
             {
@@ -88,7 +87,7 @@ namespace ActionService.Logic
             }
 
             this.Logger.Information("ActionProvider - GetNextAction - Found an action model to perform");
-            this.ActionsSchedule[actionSchedule] = false;
+            actionSchedule.Active = false;
 
             ResetOlderActions();
             SaveActionsSchedule();
@@ -110,17 +109,19 @@ namespace ActionService.Logic
             var actionModels = new List<ActionModel>();
             foreach (KeyValuePair<string, ActionDefinition> actionDefinition in this.ActionsDefinitions)
             {
-                IEnumerable<KeyValuePair<ActionSchedule, bool>> scheduleOfAction = this.ActionsSchedule.Where(x => x.Key.ActionName == actionDefinition.Key);
-                foreach (KeyValuePair<ActionSchedule, bool> actionSchedule in scheduleOfAction)
+                IEnumerable<ActionSchedule> scheduleOfAction = this.ActionsSchedule.Where(x => x.ActionName == actionDefinition.Key);
+                foreach (ActionSchedule actionSchedule in scheduleOfAction)
                 {
                     var actionModel = new ActionModel
                     {
-                        Id = actionSchedule.Key.Id,
+                        Id = actionSchedule.Id,
                         Name = actionDefinition.Key,
                         // FullUrl = GetFullUrl(actionDefinition.Value),
-                        Time = actionSchedule.Key.Time,
-                        DaysOfWeek = actionSchedule.Key.Day.HasValue ? new[] { actionSchedule.Key.Day.Value } : new DayOfWeek[] { },
-                        Active = actionSchedule.Value,
+                        Time = actionSchedule.Time,
+                        DaysOfWeek = actionSchedule.Day.HasValue ? new[] { actionSchedule.Day.Value } : new DayOfWeek[] { },
+                        Date = actionSchedule.Date,
+                        Repeating = actionSchedule.Repeating,
+                        Active = actionSchedule.Active,
                     };
                     actionModels.Add(actionModel);
                 }
@@ -143,14 +144,14 @@ namespace ActionService.Logic
             return Enum.GetNames(typeof(eLifxWebApiUrl));
         }
 
-        public bool DefineAction(string name, string supportedAction, string urlParameters)
+        public bool DefineAction(string name, string supportedAction, IDictionary<string, string> urlParameters)
         {
             if (Enum.TryParse(supportedAction, out eLifxWebApiUrl supportedActionCode))
             {
                 var actionDefinition = new ActionDefinition
                 {
                     Url = supportedAction,
-                    Params = urlParameters,
+                    Parameters = urlParameters,
                 };
 
                 Logger.Information($"ActionProvider - DefineAction - adding actionDefinition { actionDefinition } to memory");
@@ -173,7 +174,7 @@ namespace ActionService.Logic
             return false;
         }
 
-        public void ScheduleAction(string actionName, DateTime timeToRun, DayOfWeek? dayOfweek)
+        public void ScheduleAction(string actionName, DateTime timeToRun, DayOfWeek? dayOfweek, DateTime? specificDate, bool repeating)
         {
             Logger.Information($"ActionProvider - ScheduleAction - adding action { actionName } to memory");
 
@@ -181,11 +182,14 @@ namespace ActionService.Logic
             {
                 this.ActionsSchedule.Add(new ActionSchedule
                 {
-                    Id = this.ActionsSchedule.Select(x => x.Key.Id).Max() + 1,
+                    Id = this.ActionsSchedule.Select(x => x.Id).Max() + 1,
                     ActionName = actionName,
                     Time = timeToRun,
                     Day = dayOfweek,
-                }, true); ; ;
+                    Date = specificDate,
+                    Repeating = repeating,
+                    Active = true,
+                });
             }
             catch (Exception ex)
             {
@@ -201,7 +205,7 @@ namespace ActionService.Logic
         {
             Logger.Information($"ActionProvider - DeleteScheduledAction - removing action { id } from schedule in memory");
 
-            ActionSchedule actionSchedule = this.ActionsSchedule.Select(x => x.Key).Where(x => x.Id == id).FirstOrDefault();
+            ActionSchedule actionSchedule = this.ActionsSchedule.Where(x => x.Id == id).FirstOrDefault();
             if (actionSchedule == null)
             {
                 Logger.Error($"ActionProvider - DeleteScheduledAction - did not find scheduledAction { id } in memory");
@@ -221,7 +225,7 @@ namespace ActionService.Logic
         {
             Logger.Information($"ActionProvider - ModifyScheduledAction - modifying action { actionModel } from schedule in memory");
 
-            ActionSchedule actionSchedule = this.ActionsSchedule.Select(x => x.Key).Where(x => x.Id == actionModel.Id).FirstOrDefault();
+            ActionSchedule actionSchedule = this.ActionsSchedule.Where(x => x.Id == actionModel.Id).FirstOrDefault();
             if (actionSchedule == null)
             {
                 Logger.Error($"ActionProvider - ModifyScheduledAction - did not find scheduledAction { actionModel } in memory");
@@ -234,7 +238,7 @@ namespace ActionService.Logic
                 actionSchedule.Day = actionModel.DaysOfWeek.First();
             }
             actionSchedule.Time = actionModel.Time;
-            this.ActionsSchedule[actionSchedule] = actionModel.Active;
+            actionSchedule.Active = actionModel.Active;
 
             Logger.Information($"ActionProvider - ModifyScheduledAction - modified action { actionModel } from schedule in memory");
 
@@ -248,19 +252,20 @@ namespace ActionService.Logic
                                          DateTime timeToRun,
                                          DayOfWeek? dayOfweek,
                                          string urlCodeToRun,
-                                         string paramsForUrl)
+                                         IDictionary<string, string> paramsForUrl)
         {
             this.ActionsSchedule.Add(new ActionSchedule
             {
-                Id = this.ActionsSchedule.Select(x => x.Key.Id).Max() + 1,
+                Id = this.ActionsSchedule.Select(x => x.Id).Max() + 1,
                 ActionName = actionName,
                 Time = timeToRun,
                 Day = dayOfweek,
-            }, true);
+                Active = true,
+            });
             this.ActionsDefinitions.Add(actionName, new ActionDefinition
             {
                 Url = urlCodeToRun,
-                Params = paramsForUrl,
+                Parameters = paramsForUrl,
             });
         }
         private void LoadActionsDefinitions()
@@ -305,13 +310,14 @@ namespace ActionService.Logic
 
             try
             {
-                this.ActionsSchedule = new Dictionary<ActionSchedule, bool>();
+                this.ActionsSchedule = new List<ActionSchedule>();
                 string fileContent = File.ReadAllText(ActionsScheduleFilePath);
                 KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = JsonConvert.DeserializeObject<KeyValuePair<ActionSchedule, bool>[]>(fileContent);
                 foreach (var record in actionsScheduleArray)
                 {
                     record.Key.Id = this.ActionsSchedule.Count() + 1;
-                    this.ActionsSchedule.Add(record.Key, record.Value);
+                    record.Key.Active = record.Value;
+                    this.ActionsSchedule.Add(record.Key);
                 }
             }
             catch (Exception ex)
@@ -329,7 +335,7 @@ namespace ActionService.Logic
 
             try
             {
-                KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = this.ActionsSchedule.ToArray();
+                ActionSchedule[] actionsScheduleArray = this.ActionsSchedule.ToArray();
                 string fileContent = JsonConvert.SerializeObject(actionsScheduleArray);
                 File.WriteAllText(ActionsScheduleFilePath, fileContent);
             }
@@ -360,29 +366,28 @@ namespace ActionService.Logic
 
         private void ResetActions(IEnumerable<DayOfWeek> daysToIgnore)
         {
-            var oneTimeActions = this.ActionsSchedule.Where(x => !x.Value)
-                .Where(x => !x.Key.Day.HasValue)
-                .Select(x => x.Key).ToList();
+            var oneTimeActions = this.ActionsSchedule.Where(x => !x.Active)
+                .Where(x => !x.Day.HasValue)
+                .ToList();
             foreach (ActionSchedule actionSchedule in oneTimeActions)
             {
                 this.ActionsSchedule.Remove(actionSchedule);
             }
 
-            var repeatableDays = this.ActionsSchedule.Where(x => !x.Value)
-                .Where(x => x.Key.Day.HasValue)
-                .Where(x => !daysToIgnore.Contains(x.Key.Day.Value))
-                .Select(x => x.Key).ToList();
+            var repeatableDays = this.ActionsSchedule.Where(x => !x.Active)
+                .Where(x => x.Day.HasValue)
+                .Where(x => !daysToIgnore.Contains(x.Day.Value))
+                .ToList();
             foreach (ActionSchedule actionSchedule in repeatableDays)
             {
-                this.ActionsSchedule[actionSchedule] = true;
+                actionSchedule.Active = true;
             }
         }
 
         private string GetFullUrl(ActionDefinition actionDefinition)
         {
-            string url = this.ServiceUrlProvider.GetUrl(eService.LifxWebApi, actionDefinition.Url);
-            string fullUrl = string.Concat(url, actionDefinition.Params);
-            return fullUrl;
+            string url = this.ServiceUrlProvider.GetUrl(eService.LifxWebApi, actionDefinition.Url, actionDefinition.Parameters);
+            return url;
         }
 
         #region Initialize datafile
@@ -400,21 +405,35 @@ namespace ActionService.Logic
                     actionStartFadeInName, new ActionDefinition
                     {
                         Url = eLifxWebApiUrl.SetBrightness.ToString(),
-                        Params = $"?label={"Bedroom"}&brightness={0.01}&fadeInDuration={0}",
+                        Parameters = new Dictionary<string, string>
+                        {
+                            { "label" , "Bedroom" },
+                            { "brightness", "0.01" },
+                            { "fadeInDuration", "0" },
+                        },
                     }
                 },
                 {
                     actionTurnOnBulbName, new ActionDefinition
                     {
                         Url = eLifxWebApiUrl.SetPower.ToString(),
-                        Params = $"?label={"Bedroom"}&onOffState={"on"}",
+                        Parameters = new Dictionary<string, string>
+                        {
+                            { "label" , "Bedroom" },
+                            { "onOffState", "on" },
+                        },
                     }
                 },
                 {
                     actionFadeInName, new ActionDefinition
                     {
                         Url = eLifxWebApiUrl.SetBrightness.ToString(),
-                        Params = $"?label={"Bedroom"}&brightness={1}&fadeInDuration={900000}",
+                        Parameters = new Dictionary<string, string>
+                        {
+                            { "label" , "Bedroom" },
+                            { "brightness", "1" },
+                            { "fadeInDuration", "900000" },
+                        },
                     }
                 },
             };
@@ -426,7 +445,7 @@ namespace ActionService.Logic
             {
                 var actionSchedule = new ActionSchedule
                 {
-                    Id = this.ActionsSchedule.Select(x => x.Key.Id).Max() + 1,
+                    Id = this.ActionsSchedule.Select(x => x.Id).Max() + 1,
                     Day = dayOfWeek,
                     Time = actionDayTime,
                     ActionName = actionStartFadeInName,
@@ -435,7 +454,8 @@ namespace ActionService.Logic
                 {
                     actionSchedule.Time = actionWeekendTime;
                 }
-                this.ActionsSchedule.Add(actionSchedule, true);
+                actionSchedule.Active = true;
+                this.ActionsSchedule.Add(actionSchedule);
             }
         }
 
@@ -451,7 +471,7 @@ namespace ActionService.Logic
 
             InitializeActionsDefinitions(actionStartWakeupName, actionInitFadeInName, actionTurnOnBulbName, actionFadeInName);
 
-            this.ActionsSchedule = new Dictionary<ActionSchedule, bool>();
+            this.ActionsSchedule = new List<ActionSchedule>();
             InitializeActionsSchedule(actionStartWakeupName, actionDayTime.AddMinutes(-5), actionWeekendTime.AddMinutes(-5));
             InitializeActionsSchedule(actionInitFadeInName, actionDayTime, actionWeekendTime);
             InitializeActionsSchedule(actionTurnOnBulbName, actionDayTime.AddMinutes(1), actionWeekendTime.AddMinutes(1));

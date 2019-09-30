@@ -1,5 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using Infrared.Enums;
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 
 namespace ActionService.Models
 {
@@ -8,18 +10,17 @@ namespace ActionService.Models
     {
         [JsonProperty("Url")]
         public string Url { get; set; }
-        [JsonProperty("Params")]
-        public string Params { get; set; }
+
+        public eService Service { get; set; }
+
+        public string ActionId { get; set; }
+
+        [JsonProperty("Parameters")]
+        public IDictionary<string, string> Parameters { get; set; }
 
         public override string ToString()
         {
             return JsonConvert.SerializeObject(this);
         }
-        
-
-        //public override string ToString()
-        //{
-        //    return $"Url: {Url.ToString()}, Params: {Params}";
-        //}
     }
 }
