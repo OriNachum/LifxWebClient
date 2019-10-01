@@ -8,12 +8,17 @@ namespace ActionService.Models
     [JsonObject]
     public class ActionDefinition
     {
-        [JsonProperty("Url")]
-        public string Url { get; set; }
+        //[JsonProperty("Url")]
+        //public string Url { get; set; }
 
+        [JsonProperty("Service")]
         public eService Service { get; set; }
 
+        [JsonProperty("ActionId")]
         public string ActionId { get; set; }
+
+        //[JsonProperty("Params")]
+        //public string Params { get; set; }
 
         [JsonProperty("Parameters")]
         public IDictionary<string, string> Parameters { get; set; }

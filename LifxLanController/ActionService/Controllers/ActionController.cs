@@ -94,14 +94,15 @@ namespace ActionService.Controllers
 
             if (DateTime.TryParse(timeToRun, out DateTime parsedTimeToRun))
             {
-                DayOfWeek? parsedDayOfWeek = null;
-                if (dayOfWeek == null && Enum.TryParse(dayOfWeek, out DayOfWeek eDayOfWeek))
+
+                var daysOfWeek = new List<DayOfWeek>();
+                if (dayOfWeek != null && Enum.TryParse(dayOfWeek, out DayOfWeek enumDayOfWeek))
                 {
-                    parsedDayOfWeek = eDayOfWeek;
-                    Logger.Information($"ActionController - ScheduleAction - day of week for { name } is { parsedDayOfWeek }");
+                    daysOfWeek.Add(enumDayOfWeek);
+                    Logger.Information($"ActionController - ScheduleAction - day of week for { name } is { daysOfWeek.First() }");
                 }
 
-                this.ActionProvider.ScheduleAction(name, parsedTimeToRun, parsedDayOfWeek, null, true);
+                this.ActionProvider.ScheduleAction(name, parsedTimeToRun, daysOfWeek, specificDate: null, repeating: true);
 
                 Logger.Error($"ActionController - ScheduleAction - succeeded scheduling action { name }");
 

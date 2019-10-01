@@ -55,18 +55,22 @@ namespace Infrared.Impl
                 { eService.ActionService, 5021 },
                 { eService.BishopService, 5031 },
             };
-            var HttpContextAccessor = new HttpContextAccessor();
-            Hostname = HttpContextAccessor.HttpContext
+            var httpContextAccessor = new HttpContextAccessor();
+            this.Hostname = httpContextAccessor.HttpContext?
                 .Connection
                 .RemoteIpAddress
                 .GetAddressBytes()
                 .Select(x => x.ToString())
                 .Aggregate((x,y) => $"{ x }.{ y }");
+            if (this.Hostname == null)
+            {
+                this.Hostname = "127.0.0.1";
+            }
 
             this.Sites = new Dictionary<string, string> {
-            { "dev", $"https://{Hostname}:44370" },
-            { "devIisDebug", $"https://{Hostname}:5001"},
-            { "devIis",  $"https://{Hostname}"},
+            { "dev", $"https://{this.Hostname}:44370" },
+            { "devIisDebug", $"https://{this.Hostname}:5001"},
+            { "devIis",  $"https://{this.Hostname}"},
         };
         }
 

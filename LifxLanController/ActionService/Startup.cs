@@ -61,6 +61,7 @@ namespace ActionService
             services.AddSingleton<ILogger, ActionServiceLogger>();
             services.AddSingleton<IServiceUrlProvider, ServiceUrlProvider>();
             services.AddSingleton<IActionProvider, ActionProvider>();
+            services.AddSingleton<IOSProvider, OSProvider>();
             services.Configure<ActionProvider>(Configuration);
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
 
