@@ -52,6 +52,7 @@ namespace ActionService.Logic
         private ILogger Logger { get; }
         public IOSProvider OSProvider { get; }
         private IServiceUrlProvider ServiceUrlProvider { get; }
+        public IDictionary<DateTime, ActionSchedule> ActionHistory { get; private set; }
 
         public ActionProvider(ILogger logger, IServiceUrlProvider serviceUrlProvider, IOSProvider osProvider)
         {
@@ -92,6 +93,8 @@ namespace ActionService.Logic
             {
                 actionSchedule.Active = false;
             }
+
+            this.ActionHistory.Add(DateTime.Now, actionSchedule);
 
             ResetOlderActions();
             SaveActionsSchedule();
@@ -351,30 +354,19 @@ namespace ActionService.Logic
 
         private void ResetOlderActions()
         {
-            var todayAndYesterday = new List<DayOfWeek>
+            List<KeyValuePair<DateTime, ActionSchedule>> oldActions = this.ActionHistory
+                .Where(x => x.Key < DateTime.Now.AddMinutes(40))
+                .ToList();
+            foreach (var actionTime in oldActions)
             {
-                DateTime.UtcNow.DayOfWeek,
-                DateTime.UtcNow.AddDays(-1).DayOfWeek,
-            };
-            ResetActions(todayAndYesterday);
+                this.ActionHistory.Remove(actionTime);
+            }
         }
 
         private void ResetActions()
         {
-            var daysToIgnore = new List<DayOfWeek>();
-            ResetActions(daysToIgnore);
+            this.ActionHistory = new Dictionary<DateTime, ActionSchedule>();
         }
-
-        private void ResetActions(IEnumerable<DayOfWeek> daysToIgnore)
-        {
-            // TODO: Reset action history
-        }
-
-        //private string GetFullUrl(ActionDefinition actionDefinition)
-        //{
-        //    string url = this.ServiceUrlProvider.GetUrl(eService.LifxWebApi, actionDefinition.Url, actionDefinition.Parameters);
-        //    return url;
-        //}
 
         //#region Initialize datafile
         //private void InitializeActionsDefinitions(string actionStartWakeupName, string actionStartFadeInName, string actionTurnOnBulbName, string actionFadeInName)
