@@ -17,6 +17,8 @@ namespace ActionService.Logic
     {
         private const string ActionsScheduleFileName = "ActionsSchedule.json";
         private const string ActionsDefinitionsFileName = @"ActionsDefinitions.json";
+        private const int GraceTimeForPerformingAction = 30;
+
         private string ActionsScheduleFilePath
         {
             get
@@ -52,7 +54,7 @@ namespace ActionService.Logic
         private ILogger Logger { get; }
         public IOSProvider OSProvider { get; }
         private IServiceUrlProvider ServiceUrlProvider { get; }
-        public IDictionary<DateTime, ActionSchedule> ActionHistory { get; private set; }
+        public IDictionary<ActionSchedule, DateTime> ActionHistory { get; private set; }
 
         public ActionProvider(ILogger logger, IServiceUrlProvider serviceUrlProvider, IOSProvider osProvider)
         {
@@ -75,12 +77,14 @@ namespace ActionService.Logic
         #region IActionProvider
         public ActionModel GetNextScheduledAction()
         {
+
             ActionSchedule actionSchedule = this.ActionsSchedule
                 .Where(x => x.Active)
                 .Where(x => !x.DaysOfWeek.Any() || x.DaysOfWeek.Contains(DateTime.Now.DayOfWeek))
                 .Where(x => x.Time.TimeOfDay <= DateTime.Now.TimeOfDay)
-                .Where(x => x.Time.AddMinutes(30).TimeOfDay > DateTime.Now.TimeOfDay)
+                .Where(x => x.Time.AddMinutes(GraceTimeForPerformingAction).TimeOfDay > DateTime.Now.TimeOfDay)
                 .Where(x => this.ActionsDefinitions.ContainsKey(x.ActionName))
+                .Where(x => (DateTime.Now - this.ActionHistory[x]).TotalMinutes > GraceTimeForPerformingAction)
                 .FirstOrDefault();
             if (actionSchedule == null)
             {
@@ -94,7 +98,7 @@ namespace ActionService.Logic
                 actionSchedule.Active = false;
             }
 
-            this.ActionHistory.Add(DateTime.Now, actionSchedule);
+            this.ActionHistory.Add(actionSchedule, DateTime.Now);
 
             ResetOlderActions();
             SaveActionsSchedule();
@@ -359,8 +363,8 @@ namespace ActionService.Logic
 
         private void ResetOlderActions()
         {
-            List<KeyValuePair<DateTime, ActionSchedule>> oldActions = this.ActionHistory
-                .Where(x => x.Key < DateTime.Now.AddMinutes(40))
+            List<KeyValuePair<ActionSchedule, DateTime>> oldActions = this.ActionHistory
+                .Where(x => x.Value < DateTime.Now.AddMinutes(40))
                 .ToList();
             foreach (var actionTime in oldActions)
             {
@@ -370,7 +374,7 @@ namespace ActionService.Logic
 
         private void ResetActions()
         {
-            this.ActionHistory = new Dictionary<DateTime, ActionSchedule>();
+            this.ActionHistory = new Dictionary<ActionSchedule, DateTime>();
         }
 
         //#region Initialize datafile
