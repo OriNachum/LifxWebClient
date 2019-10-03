@@ -86,31 +86,51 @@ namespace ActionService.Controllers
             return new ActionResult<string>(serializedResult);
         }
 
+        //// api/Action/GetSchedule
+        //[HttpGet("ScheduleAction")]
+        //public ActionResult<string> ScheduleAction(string name, string timeToRun, string dayOfWeek)
+        //{
+        //    Logger.Information($"ActionController - ScheduleAction - action { name } was requested to be scheduled on { timeToRun } for day { dayOfWeek }");
+
+        //    if (DateTime.TryParse(timeToRun, out DateTime parsedTimeToRun))
+        //    {
+
+        //        var daysOfWeek = new List<DayOfWeek>();
+        //        if (dayOfWeek != null && Enum.TryParse(dayOfWeek, out DayOfWeek enumDayOfWeek))
+        //        {
+        //            daysOfWeek.Add(enumDayOfWeek);
+        //            Logger.Information($"ActionController - ScheduleAction - day of week for { name } is { daysOfWeek.First() }");
+        //        }
+
+        //        this.ActionProvider.ScheduleAction(name, parsedTimeToRun, daysOfWeek, specificDate: null, repeating: true);
+
+        //        Logger.Error($"ActionController - ScheduleAction - succeeded scheduling action { name }");
+
+        //        return new ActionResult<string>("Success");
+        //    }
+
+        //    Logger.Error($"ActionController - ScheduleAction - failed parsing dateTime {timeToRun} for action { name }.");
+        //    return new ActionResult<string>("Fail");
+        //}
+
         // api/Action/GetSchedule
         [HttpGet("ScheduleAction")]
-        public ActionResult<string> ScheduleAction(string name, string timeToRun, string dayOfWeek)
+        public ActionResult<string> ScheduleAction(string actionModel)
         {
-            Logger.Information($"ActionController - ScheduleAction - action { name } was requested to be scheduled on { timeToRun } for day { dayOfWeek }");
+            Logger.Information($"ActionController - ScheduleAction - action { actionModel }");
 
-            if (DateTime.TryParse(timeToRun, out DateTime parsedTimeToRun))
+            try
             {
-
-                var daysOfWeek = new List<DayOfWeek>();
-                if (dayOfWeek != null && Enum.TryParse(dayOfWeek, out DayOfWeek enumDayOfWeek))
-                {
-                    daysOfWeek.Add(enumDayOfWeek);
-                    Logger.Information($"ActionController - ScheduleAction - day of week for { name } is { daysOfWeek.First() }");
-                }
-
-                this.ActionProvider.ScheduleAction(name, parsedTimeToRun, daysOfWeek, specificDate: null, repeating: true);
-
-                Logger.Error($"ActionController - ScheduleAction - succeeded scheduling action { name }");
-
-                return new ActionResult<string>("Success");
+                ActionModel deserializedModel = JsonConvert.DeserializeObject<ActionModel>(actionModel);
+                this.ActionProvider.ScheduleAction(deserializedModel);
+                // var serializedResult = success ? "Success" : "Fail";
+                // Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
+                return new ActionResult<string>(true.ToString());
             }
-            
-            Logger.Error($"ActionController - ScheduleAction - failed parsing dateTime {timeToRun} for action { name }.");
-            return new ActionResult<string>("Fail");
+            catch (Exception ex)
+            {
+                return new ActionResult<string>(ex.ToString());
+            }
         }
 
         // api/Action/GetSchedule
@@ -130,11 +150,18 @@ namespace ActionService.Controllers
         {
             Logger.Information($"ActionController - ModifyScheduledAction - requested to modify action { actionModel }");
 
-            ActionModel deserializedModel =JsonConvert.DeserializeObject<ActionModel>(actionModel);
-            bool success = this.ActionProvider.ModifyScheduledAction(deserializedModel);
-            // var serializedResult = success ? "Success" : "Fail";
-            // Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
-            return new ActionResult<string>(success.ToString());
+            try
+            {
+                ActionModel deserializedModel = JsonConvert.DeserializeObject<ActionModel>(actionModel);
+                bool success = this.ActionProvider.ModifyScheduledAction(deserializedModel);
+                // var serializedResult = success ? "Success" : "Fail";
+                // Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
+                return new ActionResult<string>(success.ToString());
+            }
+            catch (Exception ex)
+            {
+                return new ActionResult<string>(ex.ToString());
+            }
         }
     }
 }

@@ -190,6 +190,11 @@ namespace ActionService.Logic
             return false;
         }
 
+        public void ScheduleAction(ActionModel actionModel)
+        {
+            ScheduleAction(actionModel.Name, actionModel.Time, actionModel.DaysOfWeek, actionModel.Date, actionModel.Repeating);
+        }
+
         public void ScheduleAction(string actionName, DateTime timeToRun, IEnumerable<DayOfWeek> daysOfweek, DateTime? specificDate, bool repeating)
         {
             Logger.Information($"ActionProvider - ScheduleAction - adding action { actionName } to memory");
