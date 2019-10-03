@@ -46,7 +46,7 @@ namespace Bishop
                                 options.Listen(IPAddress.Any, httpsPort);
                                 // Set properties and call methods on options
                             });
-
+                            bishopService.Start();
                             webHosterBuilder.Build().Run();
                             logger.Information("Bishop Main Service is stopped");
                             break;
