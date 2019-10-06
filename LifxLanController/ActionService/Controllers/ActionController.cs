@@ -57,7 +57,7 @@ namespace ActionService.Controllers
         public ActionResult<string> GetActions()
         {
             Logger.Information("ActionController - GetActions - actions requested");
-            IEnumerable<string> definedActionsIds = this.ActionProvider.GetActions();
+            IEnumerable<ActionDefinitionModel> definedActionsIds = this.ActionProvider.GetActions();
             var serializedschedule = JsonConvert.SerializeObject(definedActionsIds);
 
             return new ActionResult<string>(serializedschedule);
@@ -68,21 +68,37 @@ namespace ActionService.Controllers
         public ActionResult<string> GetSupportedActions()
         {
             Logger.Information("ActionController - GetSupportedActions - supported actions requested");
-            IEnumerable<string> definedActionsIds = this.ActionProvider.GetSupportedActions();
-            var serializedschedule = JsonConvert.SerializeObject(definedActionsIds);
+            IReadOnlyDictionary<string, IEnumerable<string>> supportedActions = this.ActionProvider.GetSupportedActions();
+            var serializedschedule = JsonConvert.SerializeObject(supportedActions);
 
             return new ActionResult<string>(serializedschedule);
         }
 
+
         // api/Action/GetSchedule
         [HttpGet("DefineAction")]
-        public ActionResult<string> DefineAction(string name, string supportedAction, string parameters)
+        public ActionResult<string> DefineAction(string name, string service, string actionId, string parameters)
+        // public ActionResult<string> DefineAction(ActionDefinitionModel model)
         {
-            Logger.Information($"ActionController - DefineAction - requested to create action { name } with supportedAction { supportedAction } and parameters { parameters }");
-            var parametersObject = JsonConvert.DeserializeObject<Dictionary<string, string>>(parameters);
-            bool success = this.ActionProvider.DefineAction(name, supportedAction, parametersObject);
+            var parametersObject = JsonConvert.DeserializeObject<IDictionary<string, string>>(parameters);
+            var model = new ActionDefinitionModel
+            {
+                Name = name,
+                Service = service,
+                ActionId = actionId,
+                Parameters = parametersObject,
+            };
+            Logger.Information($"ActionController - DefineAction - requested to create action { model.ToString() }");
+            // var parametersDictionary = new Dictionary<string, string>();
+            //foreach (string parameter in parameters)
+            //{
+            //    var parameterArray = JsonConvert.DeserializeObject<string[]>(parameter);
+
+            //    parametersDictionary.Add(parameterArray[0], parameterArray[1]);
+            //}
+            bool success = this.ActionProvider.DefineAction(model.Name, model.Service, model.ActionId, model.Parameters);
             var serializedResult = success ? "Success" : "Fail";
-            Logger.Information($"ActionController - DefineAction - defining action { name } result: { serializedResult }");
+            Logger.Information($"ActionController - DefineAction - defining action { model.Name } result: { serializedResult }");
             return new ActionResult<string>(serializedResult);
         }
 

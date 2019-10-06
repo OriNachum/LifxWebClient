@@ -10,6 +10,7 @@ using Infrared;
 using Infrared.Enums;
 using ActionService.Models;
 using System.Runtime.InteropServices;
+using Infrared.Impl;
 
 namespace ActionService.Logic
 {
@@ -154,24 +155,33 @@ namespace ActionService.Logic
         }
 
 
-        public IEnumerable<string> GetActions()
+        public IEnumerable<ActionDefinitionModel> GetActions()
         {
-            return this.ActionsDefinitions.Keys;
-        }
-
-        public IEnumerable<string> GetSupportedActions()
-        {
-            return Enum.GetNames(typeof(eLifxWebApiUrl));
-        }
-
-        public bool DefineAction(string name, string supportedAction, IDictionary<string, string> urlParameters)
-        {
-            if (Enum.TryParse(supportedAction, out eLifxWebApiUrl supportedActionCode))
+            return this.ActionsDefinitions.Select(x => new ActionDefinitionModel
             {
+                Name = x.Key,
+                Service = x.Value.Service.ToString(),
+                ActionId = x.Value.ActionId,
+                Parameters = x.Value.Parameters,
+            });
+        }
+
+        public IReadOnlyDictionary<string, IEnumerable<string>> GetSupportedActions()
+        {
+            var serviceActionsProvider = new ServiceActionsProvider();
+
+            return serviceActionsProvider.GetAllActions();
+        }
+
+        public bool DefineAction(string name, string service, string actionId, IDictionary<string, string> parameters)
+        {
+            // if (Enum.TryParse(supportedAction, out eLifxWebApiUrl supportedActionCode))
+            {
+
                 var actionDefinition = new ActionDefinition
                 {
-                    ActionId = supportedActionCode.ToString(),
-                    Parameters = urlParameters,
+                    ActionId = actionId,
+                    Parameters = parameters,
                 };
 
                 Logger.Information($"ActionProvider - DefineAction - adding actionDefinition { actionDefinition } to memory");
@@ -191,7 +201,7 @@ namespace ActionService.Logic
                 return true;
             }
 
-            return false;
+            // return false;
         }
 
         public void ScheduleAction(ActionModel actionModel)
@@ -376,126 +386,5 @@ namespace ActionService.Logic
         {
             this.ActionHistory = new Dictionary<ActionSchedule, DateTime>();
         }
-
-        //#region Initialize datafile
-        //private void InitializeActionsDefinitions(string actionStartWakeupName, string actionStartFadeInName, string actionTurnOnBulbName, string actionFadeInName)
-        //{
-        //    this.ActionsDefinitions = new Dictionary<string, ActionDefinition>
-        //    {
-        //        {
-        //            actionStartWakeupName, new ActionDefinition
-        //            {
-        //                Url = eLifxWebApiUrl.GetBulbs.ToString(),
-        //            }
-        //        },
-        //        {
-        //            actionStartFadeInName, new ActionDefinition
-        //            {
-        //                Url = eLifxWebApiUrl.SetBrightness.ToString(),
-        //                Parameters = new Dictionary<string, string>
-        //                {
-        //                    { "label" , "Bedroom" },
-        //                    { "brightness", "0.01" },
-        //                    { "fadeInDuration", "0" },
-        //                },
-        //            }
-        //        },
-        //        {
-        //            actionTurnOnBulbName, new ActionDefinition
-        //            {
-        //                Url = eLifxWebApiUrl.SetPower.ToString(),
-        //                Parameters = new Dictionary<string, string>
-        //                {
-        //                    { "label" , "Bedroom" },
-        //                    { "onOffState", "on" },
-        //                },
-        //            }
-        //        },
-        //        {
-        //            actionFadeInName, new ActionDefinition
-        //            {
-        //                Url = eLifxWebApiUrl.SetBrightness.ToString(),
-        //                Parameters = new Dictionary<string, string>
-        //                {
-        //                    { "label" , "Bedroom" },
-        //                    { "brightness", "1" },
-        //                    { "fadeInDuration", "900000" },
-        //                },
-        //            }
-        //        },
-        //    };
-        //}
-
-        //private void InitializeActionsSchedule(string actionStartFadeInName, DateTime actionDayTime, DateTime actionWeekendTime)
-        //{
-        //    foreach (DayOfWeek dayOfWeek in Enum.GetValues(typeof(DayOfWeek)))
-        //    {
-        //        var actionSchedule = new ActionSchedule
-        //        {
-        //            Id = this.ActionsSchedule.Select(x => x.Id).Max() + 1,
-        //            Day = dayOfWeek,
-        //            Time = actionDayTime,
-        //            ActionName = actionStartFadeInName,
-        //        };
-        //        if (dayOfWeek == DayOfWeek.Friday || dayOfWeek == DayOfWeek.Saturday)
-        //        {
-        //            actionSchedule.Time = actionWeekendTime;
-        //        }
-        //        actionSchedule.Active = true;
-        //        this.ActionsSchedule.Add(actionSchedule);
-        //    }
-        //}
-
-        //private void InitializeArraysHardCoded()
-        //{
-        //    string actionStartWakeupName = "Wakeup";
-        //    string actionInitFadeInName = "StartFadeIn";
-        //    string actionTurnOnBulbName = "TuronOnBulb";
-        //    string actionFadeInName = "FadeIn";
-
-        //    var actionDayTime = new DateTime(2000, 1, 1, hour: 7, minute: 30, second: 00);
-        //    var actionWeekendTime = new DateTime(2000, 1, 1, hour: 9, minute: 30, second: 00);
-
-        //    InitializeActionsDefinitions(actionStartWakeupName, actionInitFadeInName, actionTurnOnBulbName, actionFadeInName);
-
-        //    this.ActionsSchedule = new List<ActionSchedule>();
-        //    InitializeActionsSchedule(actionStartWakeupName, actionDayTime.AddMinutes(-5), actionWeekendTime.AddMinutes(-5));
-        //    InitializeActionsSchedule(actionInitFadeInName, actionDayTime, actionWeekendTime);
-        //    InitializeActionsSchedule(actionTurnOnBulbName, actionDayTime.AddMinutes(1), actionWeekendTime.AddMinutes(1));
-        //    InitializeActionsSchedule(actionFadeInName, actionDayTime.AddMinutes(2), actionWeekendTime.AddMinutes(2));
-
-        //    /*
-        //        string testAction = "TestAction";
-        //        DayOfWeek? dayOfweek = DayOfWeek.Friday;
-        //        DateTime timeToRun = DateTime.Now.AddMinutes(2);
-        //        var urlCodeToRun = eLifxWebApi.GetBulbs.ToString();
-        //        string paramsForUrl = null;
-        //        AddActionToSchedule(testAction, dayOfweek, timeToRun, urlCodeToRun, paramsForUrl);
-        //        InitializeActionsSchedule(actionStartFadeInName, timeToRun, timeToRun);
-        //        InitializeActionsSchedule(actionFadeInName, timeToRun.AddMinutes(1), timeToRun.AddMinutes(1));
-        //    */
-        //}
-
-        //private void AddActionToSchedule(string actionName,
-        //                                 DateTime timeToRun,
-        //                                 DayOfWeek? dayOfweek,
-        //                                 string urlCodeToRun,
-        //                                 IDictionary<string, string> paramsForUrl)
-        //{
-        //    this.ActionsSchedule.Add(new ActionSchedule
-        //    {
-        //        Id = this.ActionsSchedule.Select(x => x.Id).Max() + 1,
-        //        ActionName = actionName,
-        //        Time = timeToRun,
-        //        Day = dayOfweek,
-        //        Active = true,
-        //    });
-        //    this.ActionsDefinitions.Add(actionName, new ActionDefinition
-        //    {
-        //        Url = urlCodeToRun,
-        //        Parameters = paramsForUrl,
-        //    });
-        //}
-        // #endregion
     }
 }

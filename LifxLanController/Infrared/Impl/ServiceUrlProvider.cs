@@ -25,7 +25,7 @@ namespace Infrared.Impl
         {
             get
             {
-                return $"{Sites["devIis"]}";
+                return $"{Sites["devRaspi"]}";
             }
         }
 
@@ -68,10 +68,11 @@ namespace Infrared.Impl
             }
 
             this.Sites = new Dictionary<string, string> {
-            { "dev", $"https://{this.Hostname}:44370" },
-            { "devIisDebug", $"https://{this.Hostname}:5001"},
-            { "devIis",  $"https://{this.Hostname}"},
-        };
+                { "dev", $"https://{this.Hostname}:44370" },
+                { "devIisDebug", $"https://{this.Hostname}:5001"},
+                { "devIis",  $"https://{this.Hostname}"},
+                { "devRaspi",  $"http://{this.Hostname}"},
+            };
         }
 
         public string GetUrl(eService service, string actionId, IDictionary<string, string> parameters = null)

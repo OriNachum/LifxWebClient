@@ -10,9 +10,9 @@ namespace ProvidersInterface
     {
         ActionModel GetNextScheduledAction();
         ScheduleModel GetFullSchedule();
-        IEnumerable<string> GetActions();
-        IEnumerable<string> GetSupportedActions();
-        bool DefineAction(string name, string supportedAction, IDictionary<string, string> parameters);
+        IEnumerable<ActionDefinitionModel> GetActions();
+        IReadOnlyDictionary<string, IEnumerable<string>> GetSupportedActions();
+        bool DefineAction(string name, string service, string actionId, IDictionary<string, string> parameters);
 
         void ScheduleAction(ActionModel actionModel);
         bool DeleteScheduledAction(int id);
