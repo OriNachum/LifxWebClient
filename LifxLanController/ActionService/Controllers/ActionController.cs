@@ -89,45 +89,12 @@ namespace ActionService.Controllers
                 Parameters = parametersObject,
             };
             Logger.Information($"ActionController - DefineAction - requested to create action { model.ToString() }");
-            // var parametersDictionary = new Dictionary<string, string>();
-            //foreach (string parameter in parameters)
-            //{
-            //    var parameterArray = JsonConvert.DeserializeObject<string[]>(parameter);
-
-            //    parametersDictionary.Add(parameterArray[0], parameterArray[1]);
-            //}
+            
             bool success = this.ActionProvider.DefineAction(model.Name, model.Service, model.ActionId, model.Parameters);
             var serializedResult = success ? "Success" : "Fail";
             Logger.Information($"ActionController - DefineAction - defining action { model.Name } result: { serializedResult }");
             return new ActionResult<string>(serializedResult);
         }
-
-        //// api/Action/GetSchedule
-        //[HttpGet("ScheduleAction")]
-        //public ActionResult<string> ScheduleAction(string name, string timeToRun, string dayOfWeek)
-        //{
-        //    Logger.Information($"ActionController - ScheduleAction - action { name } was requested to be scheduled on { timeToRun } for day { dayOfWeek }");
-
-        //    if (DateTime.TryParse(timeToRun, out DateTime parsedTimeToRun))
-        //    {
-
-        //        var daysOfWeek = new List<DayOfWeek>();
-        //        if (dayOfWeek != null && Enum.TryParse(dayOfWeek, out DayOfWeek enumDayOfWeek))
-        //        {
-        //            daysOfWeek.Add(enumDayOfWeek);
-        //            Logger.Information($"ActionController - ScheduleAction - day of week for { name } is { daysOfWeek.First() }");
-        //        }
-
-        //        this.ActionProvider.ScheduleAction(name, parsedTimeToRun, daysOfWeek, specificDate: null, repeating: true);
-
-        //        Logger.Error($"ActionController - ScheduleAction - succeeded scheduling action { name }");
-
-        //        return new ActionResult<string>("Success");
-        //    }
-
-        //    Logger.Error($"ActionController - ScheduleAction - failed parsing dateTime {timeToRun} for action { name }.");
-        //    return new ActionResult<string>("Fail");
-        //}
 
         // api/Action/GetSchedule
         [HttpGet("ScheduleAction")]

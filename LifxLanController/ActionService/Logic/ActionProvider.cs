@@ -85,7 +85,7 @@ namespace ActionService.Logic
                 .Where(x => x.Time.TimeOfDay <= DateTime.Now.TimeOfDay)
                 .Where(x => x.Time.AddMinutes(GraceTimeForPerformingAction).TimeOfDay > DateTime.Now.TimeOfDay)
                 .Where(x => this.ActionsDefinitions.ContainsKey(x.ActionName))
-                .Where(x => (DateTime.Now - this.ActionHistory[x]).TotalMinutes > GraceTimeForPerformingAction)
+                .Where(x => !this.ActionHistory.ContainsKey(x) || (DateTime.Now - this.ActionHistory[x]).TotalMinutes > GraceTimeForPerformingAction)
                 .FirstOrDefault();
             if (actionSchedule == null)
             {
