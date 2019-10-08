@@ -192,7 +192,7 @@ namespace LifxCoreController.Api
 
         public async Task<(eLifxResponse response, string data, string bulb)> OffAsync(string label, int? overTime)
         {
-            Logger.Information($"LifxApi - OnAsync started light: { label }; overtime? { overTime ?? 0 }");
+            Logger.Information($"LifxApi - OffAsync started light: { label }; overtime? { overTime ?? 0 }");
 
             IBulb lightBulb = Bulbs?.FirstOrDefault(x => x.Value.Label == label).Value;
 
