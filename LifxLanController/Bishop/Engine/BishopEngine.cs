@@ -49,13 +49,13 @@ namespace Bishop.Engine
         {
             Func<Task<string>> nextAction = async () =>
             {
-                this.Logger.Information("ActionProvider - GenerateActionFromScheduleModel - nextAction - Generated Action started");
+                this.Logger.Information("BishopEngine - GenerateActionFromScheduleModel - nextAction - Generated Action started");
                 using (var client = this.HttpClientFactory.CreateClient())
                 {
                     string urlRequest = this.ServiceUrlProvider.GetUrl(actionModel.Service, actionModel.ActionId, actionModel.Parameters);
-                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url request: { urlRequest }");
+                    this.Logger.Debug($"BishopEngine - GenerateActionFromScheduleModel - nextAction - Calling url request: { urlRequest }");
                     var response = await client.GetAsync(urlRequest);
-                    this.Logger.Debug($"ActionProvider - GenerateActionFromScheduleModel - nextAction - Calling url response: { response }");
+                    this.Logger.Debug($"BishopEngine - GenerateActionFromScheduleModel - nextAction - Calling url response: { response }");
                     return response.ToString();
                 }
             };
