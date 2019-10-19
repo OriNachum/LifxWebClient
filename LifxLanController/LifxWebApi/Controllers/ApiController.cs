@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Lifx;
 using LifxCoreController;
@@ -68,7 +69,8 @@ namespace LifxWebApi.Controllers
         public async Task<ActionResult<object>> GetBulbsAsync()
         {
             Logger.Information("ApiController - GetBulbs");
-            var (response, message) = await this.Lifx.RefreshBulbsAsync();
+            
+            var (response, message) = await this.Lifx.GetBulbsAsync(refresh: false, new CancellationTokenSource().Token);
             if (response == eLifxResponse.Success)
             {
                 IEnumerable<IBulb> ips = this.Lifx.Bulbs.Values.ToList();

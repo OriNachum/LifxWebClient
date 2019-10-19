@@ -79,12 +79,12 @@ namespace LifxCoreController.Api
         {
             try
             {
-                if ((DateTime.Now - this.LastRefreshTime) > REFRESH_CYCLE_SLEEP_TIME)
-                {
+                //if ((DateTime.Now - this.LastRefreshTime) > REFRESH_CYCLE_SLEEP_TIME)
+                //{
                     Logger.Information("LifxApi - Refreshing bulbs");
                     await this.DetectLightsAsync(token);
                     this.LastRefreshTime = DateTime.Now;
-                }
+                //}
 
                 string serializedLights = JsonConvert.SerializeObject(Bulbs.Values);
                 return (eLifxResponse.Success, serializedLights);
@@ -300,7 +300,7 @@ namespace LifxCoreController.Api
         private bool IsLightListObsolete()
         {
             return !LastRefreshTime.HasValue ||
-                                DateTime.Now - LastRefreshTime > TimeSpan.FromMinutes(5);
+                                DateTime.Now - LastRefreshTime > REFRESH_CYCLE_SLEEP_TIME;
         }
 
         public override void Dispose()
