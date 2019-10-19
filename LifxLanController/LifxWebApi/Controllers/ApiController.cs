@@ -83,23 +83,25 @@ namespace LifxWebApi.Controllers
         [HttpGet("Toggle")]
         public async Task<ActionResult<object>> ToggleLightAsync(string label)
         {
-            Logger.Information($"ApiController - Toggle label: { label }");
+            Logger.Information($"ApiController - Toggle label: { label } requested");
 
             (eLifxResponse response, string message) = await this.Lifx.ToggleLightAsync(label);
 
             IEnumerable<IBulb> ips = Lifx.Bulbs.Values.ToList();
             var serializedIps = JsonConvert.SerializeObject(ips);
 
+            Logger.Information($"ApiController - Toggled label: { label } completed");
             return new { responseType = (int)response, message, bulbs = serializedIps };
         }
 
         [HttpGet("Refresh")]
         public async Task<ActionResult<string>> RefreshBulbsAsync()
         {
-            Logger.Information("ApiController - Refresh");
+            Logger.Information("ApiController - Refresh requested");
 
             (eLifxResponse response, string message) = await this.Lifx.RefreshBulbsAsync();
 
+            Logger.Information("ApiController - Refreshed");
             return response.ToString() + ": " + message;
         }
 

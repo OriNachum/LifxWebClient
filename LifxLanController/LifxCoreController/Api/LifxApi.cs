@@ -181,8 +181,7 @@ namespace LifxCoreController.Api
         {
             try
             {
-                if (IsLightListObsolete() ||
-                    !Bulbs.Values.Where(x => x.Label == label).Any())
+                if (!Bulbs.Values.Where(x => x.Label == label).Any())
                 {
                     Thread.Sleep(100);
                     var (response, message) = await RefreshBulbsAsync();
