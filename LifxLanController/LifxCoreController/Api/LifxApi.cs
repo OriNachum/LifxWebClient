@@ -50,7 +50,7 @@ namespace LifxCoreController.Api
                   logger)
         {
             _logger = logger;
-            Task.Run(() => StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME));
+            StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME);
         }
 
         public async Task<(eLifxResponse response, string data, string bulb)> RefreshBulbAsync(string label)
@@ -136,21 +136,35 @@ namespace LifxCoreController.Api
 
         public async Task<(eLifxResponse response, string data)> GetBulbsAsync(bool refresh, CancellationToken token)
         {
+            this.Logger.Information("LifxApi GetBulbsAsync getting bulbs");
+
             if (IsLightListObsolete() || refresh)
             {
+                if (!refresh)
+                {
+                    this.Logger.Information($"LifxApi GetBulbsAsync lights are obsolete, refreshing");
+                }
+
                 var (response, message) = await RefreshBulbsAsync();
                 if (!response.Equals(eLifxResponse.Success))
                 {
+                    this.Logger.Information($"LifxApi GetBulbsAsync failed to refresh lights");
+
                     return (response, message);
                 }
             }
+
+            this.Logger.Information($"LifxApi GetBulbsAsync identified { Bulbs.Count() } bulbs");
+
             string bulbs = JsonConvert.SerializeObject(Bulbs.Values);
             return (eLifxResponse.Success, bulbs);
         }
 
         private void StartAutoRefresh(TimeSpan updateSleepSpan)
         {
+            this.Logger.Information("LifxApi StartAutoRefresh initializing autorefresh");
             timer.InitializeCallback(async () => await RefreshBulbsAsync(), REFRESH_CYCLE_SLEEP_TIME);
+            this.Logger.Information("LifxApi StartAutoRefresh autorefresh initialized");
         }
 
         public async Task<(eLifxResponse response, string data)> ToggleLightAsync(string label)
