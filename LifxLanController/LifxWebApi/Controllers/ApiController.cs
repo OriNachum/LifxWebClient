@@ -42,6 +42,7 @@ namespace LifxWebApi.Controllers
         {
             _logger = logger;
             Lifx = lifxApi;
+            Lifx.RefreshBulbsAsync();
         }
 
         // GET api/values11
@@ -67,7 +68,6 @@ namespace LifxWebApi.Controllers
         public async Task<ActionResult<object>> GetBulbsAsync()
         {
             Logger.Information("ApiController - GetBulbs");
-
             var (response, message) = await this.Lifx.RefreshBulbsAsync();
             if (response == eLifxResponse.Success)
             {

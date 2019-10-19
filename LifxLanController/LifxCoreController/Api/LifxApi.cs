@@ -79,10 +79,13 @@ namespace LifxCoreController.Api
         {
             try
             {
-                Logger.Information("LifxApi - Refreshing bulbs");
-                await this.DetectLightsAsync(token);
+                if ((DateTime.Now - this.LastRefreshTime) > REFRESH_CYCLE_SLEEP_TIME)
+                {
+                    Logger.Information("LifxApi - Refreshing bulbs");
+                    await this.DetectLightsAsync(token);
+                    this.LastRefreshTime = DateTime.Now;
+                }
 
-                LastRefreshTime = DateTime.Now;
                 string serializedLights = JsonConvert.SerializeObject(Bulbs.Values);
                 return (eLifxResponse.Success, serializedLights);
             }
