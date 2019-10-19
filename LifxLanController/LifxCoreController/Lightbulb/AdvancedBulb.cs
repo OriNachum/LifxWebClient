@@ -46,7 +46,20 @@ namespace LifxCoreController.Lightbulb
                 }
                 if (!newState.HasValue)
                 {
-                    await this.ResetBulbAsync();
+                    bool bulbWasReset = false;
+                    while (!bulbWasReset)
+                    {
+
+                        try
+                        {
+                            await this.ResetBulbAsync();
+                            bulbWasReset = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            Thread.Sleep(5000);
+                        }
+                    }
                 }
                 actionRunner.Reset(IdlePeriod);
             }
