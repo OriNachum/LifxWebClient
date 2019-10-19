@@ -274,6 +274,7 @@ namespace ActionService.Logic
             }
             actionSchedule.Time = actionModel.Time;
             actionSchedule.Active = actionModel.Active;
+            actionSchedule.Repeating = actionModel.Repeating;
 
             Logger.Information($"ActionProvider - ModifyScheduledAction - modified action { actionModel } from schedule in memory");
 
