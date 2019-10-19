@@ -75,25 +75,26 @@ namespace LifxCoreController.Detector
 
             try
             {
-                Logger.Information("LifxDetector - Starting to detect lights");
+                Logger.Information("LifxDetector DetectLightsAsync Starting to detect lights");
 
                 var lightFactory = new LightFactory();
                 // var candidateIpByteArray = new byte[] { 10, 0, 0, 2 };
                 // var candidateIpByteArray = new byte[] { 192, 168, 1, 11 };
                 // var candidateIpAddress = new IPAddress(candidateIpByteArray);
                 ICollection<Task> detectionTries = new List<Task>();
-                IEnumerable<IPAddress> allIpsInNetwork = await GetAllIpsInNetworkAsync();
+                IEnumerable<IPAddress> allIpsInNetwork = await this.GetAllIpsInNetworkAsync();
+                this.Logger.Information("LifxDetector DetectLightsAsync locking dictionary access");
                 lock (lightsLock)
                 {
                     IEnumerable<IPAddress> deadIps = _bulbs.Keys.Where(x => !allIpsInNetwork.Contains(x));
                     foreach (IPAddress ipAddress in deadIps)
                     {
-                        RemoveLightBulb(ipAddress);
+                        this.RemoveLightBulb(ipAddress);
                     }
                 }
                 var scanTasks = new List<Task>();
-                await ScanExistingIps(lightFactory, allIpsInNetwork, scanTasks, cancellationToken);
-                await GetAllCollectedLightsStates(cancellationToken);
+                await this.ScanExistingIps(lightFactory, allIpsInNetwork, scanTasks, cancellationToken);
+                await this.GetAllCollectedLightsStates(cancellationToken);
             }
             finally
             {
