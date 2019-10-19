@@ -14,6 +14,7 @@ using Infrared;
 using Microsoft.AspNetCore.Http;
 using LifxCoreController.Detector;
 using Microsoft.Extensions.Options;
+using Infrared.Impl;
 
 namespace LifxCoreController.Api
 {
@@ -50,6 +51,7 @@ namespace LifxCoreController.Api
                   logger)
         {
             _logger = logger;
+            timer = new GapBasedTimer(logger: _logger);
             StartAutoRefresh(REFRESH_CYCLE_SLEEP_TIME);
         }
 
@@ -163,7 +165,15 @@ namespace LifxCoreController.Api
         private void StartAutoRefresh(TimeSpan updateSleepSpan)
         {
             this.Logger.Information("LifxApi StartAutoRefresh initializing autorefresh");
-            timer.InitializeCallback(async () => await RefreshBulbsAsync(), REFRESH_CYCLE_SLEEP_TIME);
+            try
+            {
+                timer.InitializeCallback(async () => await RefreshBulbsAsync(), REFRESH_CYCLE_SLEEP_TIME);
+            }
+            catch (Exception ex)
+            {
+                this.Logger.Error(ex, "LifxApi StartAutoRefresh encountered an error when tried to set up timer callback");
+            }
+
             this.Logger.Information("LifxApi StartAutoRefresh autorefresh initialized");
         }
 
