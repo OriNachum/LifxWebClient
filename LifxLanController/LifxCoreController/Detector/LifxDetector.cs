@@ -279,10 +279,15 @@ namespace LifxCoreController.Detector
         {
             int port = 56700;
             var neighbourIps = new List<IPAddress>();
+            byte[] ipBase;
             // new byte[4] { 10, 0, 0, 1 }; //{ 192, 168, 1, 1 };
-            byte[] ipBase = HttpContextAccessor.HttpContext.Connection.RemoteIpAddress.GetAddressBytes();
-            Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - fetching IP from config");
-            if (!string.IsNullOrEmpty(this.LifxDetectorConfiguration?.Value.IP))
+            Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - fetching IP");
+            if (string.IsNullOrEmpty(this.LifxDetectorConfiguration?.Value.IP))
+            {
+                Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - fetching IP from system");
+                ipBase = HttpContextAccessor.HttpContext.Connection.RemoteIpAddress.GetAddressBytes();
+            }
+            else
             {
                 Logger.Information($"LifxDetector - GetAllIpsInNetworkAsync - fetching IP from config { this.LifxDetectorConfiguration?.Value.IP }");
 
