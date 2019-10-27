@@ -193,6 +193,13 @@ namespace LifxCoreController.Lightbulb
                         Logger.Error($"LifxBulb - GetStatAsync - operation was canceled. Exception: { ex }.");
                         return null;
                     }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"LifxBulb - GetStatAsync - unhandled exception. Last verified state: { this.LastVerifiedState }.");
+                        Logger.Error($"LifxBulb - GetStatAsync - operation disrupted. Exception: { ex }.");
+                        return null;
+                    }
+
                 }
             }
         }
