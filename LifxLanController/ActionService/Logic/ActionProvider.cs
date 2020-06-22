@@ -108,21 +108,24 @@ namespace ActionService.Logic
         public ScheduleModel GetFullSchedule()
         {
             var actionModels = new List<ActionModel>();
-            foreach (KeyValuePair<string, ActionDefinition> actionDefinition in this.ActionsDefinitions)
+            if (this.ActionsDefinitions != null && this.ActionsDefinitions.Any())
             {
-                IEnumerable<KeyValuePair<ActionSchedule, bool>> scheduleOfAction = this.ActionsSchedule.Where(x => x.Key.ActionName == actionDefinition.Key);
-                foreach (KeyValuePair<ActionSchedule, bool> actionSchedule in scheduleOfAction)
+                foreach (KeyValuePair<string, ActionDefinition> actionDefinition in this.ActionsDefinitions)
                 {
-                    var actionModel = new ActionModel
+                    IEnumerable<KeyValuePair<ActionSchedule, bool>> scheduleOfAction = this.ActionsSchedule.Where(x => x.Key.ActionName == actionDefinition.Key);
+                    foreach (KeyValuePair<ActionSchedule, bool> actionSchedule in scheduleOfAction)
                     {
-                        Id = actionSchedule.Key.Id,
-                        Name = actionDefinition.Key,
-                        FullUrl = GetFullUrl(actionDefinition.Value),
-                        Time = actionSchedule.Key.Time,
-                        DayOfWeek = actionSchedule.Key.Day,
-                        Active = actionSchedule.Value,
-                    };
-                    actionModels.Add(actionModel);
+                        var actionModel = new ActionModel
+                        {
+                            Id = actionSchedule.Key.Id,
+                            Name = actionDefinition.Key,
+                            FullUrl = GetFullUrl(actionDefinition.Value),
+                            Time = actionSchedule.Key.Time,
+                            DayOfWeek = actionSchedule.Key.Day,
+                            Active = actionSchedule.Value,
+                        };
+                        actionModels.Add(actionModel);
+                    }
                 }
             }
             var schedule = new ScheduleModel
@@ -267,7 +270,14 @@ namespace ActionService.Logic
             try
             {
                 string fileContent = File.ReadAllText(ActionsDefinitionsFilePath);
-                this.ActionsDefinitions = JsonConvert.DeserializeObject<Dictionary<string, ActionDefinition>>(fileContent);
+                if (string.IsNullOrEmpty(fileContent))
+                {
+                    this.ActionsDefinitions = new Dictionary<string, ActionDefinition>();
+                }
+                else
+                {
+                    this.ActionsDefinitions = JsonConvert.DeserializeObject<Dictionary<string, ActionDefinition>>(fileContent);
+                }
             }
             catch (Exception ex)
             {
@@ -304,11 +314,14 @@ namespace ActionService.Logic
             {
                 this.ActionsSchedule = new Dictionary<ActionSchedule, bool>();
                 string fileContent = File.ReadAllText(ActionsScheduleFilePath);
-                KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = JsonConvert.DeserializeObject<KeyValuePair<ActionSchedule, bool>[]>(fileContent);
-                foreach (var record in actionsScheduleArray)
+                if (!string.IsNullOrEmpty(fileContent))
                 {
-                    record.Key.Id = this.ActionsSchedule.Count() + 1;
-                    this.ActionsSchedule.Add(record.Key, record.Value);
+                    KeyValuePair<ActionSchedule, bool>[] actionsScheduleArray = JsonConvert.DeserializeObject<KeyValuePair<ActionSchedule, bool>[]>(fileContent);
+                    foreach (var record in actionsScheduleArray)
+                    {
+                        record.Key.Id = this.ActionsSchedule.Count() + 1;
+                        this.ActionsSchedule.Add(record.Key, record.Value);
+                    }
                 }
             }
             catch (Exception ex)
