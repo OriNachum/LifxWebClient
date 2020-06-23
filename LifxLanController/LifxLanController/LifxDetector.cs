@@ -166,7 +166,7 @@ namespace LifxLanController
 
         public void Dispose()
         {
-            if (_lights.Any())
+            if (_lights != null && _lights.Any())
             {
                 foreach (ILight light in _lights.Values)
                 {
